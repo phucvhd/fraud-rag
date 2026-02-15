@@ -11,7 +11,7 @@ logger = logging.getLogger("FraudConsumer")
 
 class FraudTransactionConsumer:
     def __init__(self):
-        self.cfg = config_loader.load("config/application.yaml")
+        self.cfg = config_loader.load()
         self.repo = TransactionRepository()
         self.consumer = Consumer({
             'bootstrap.servers': self.cfg.kafka.bootstrap_servers,

@@ -7,7 +7,7 @@ from database.model import TransactionModel, EmbeddingModel
 
 class RAGQueryEngine:
     def __init__(self):
-        self.cfg = config_loader.load("config/application.yaml")
+        self.cfg = config_loader.load()
         self.engine = create_engine(self.cfg.database.url)
         self.embedder = SentenceTransformer(self.cfg.embedding.model_name)
 

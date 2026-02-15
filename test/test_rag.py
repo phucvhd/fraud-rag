@@ -12,7 +12,7 @@ from shared.config_loader import config_loader
 class TestFraudRAG:
     @pytest.fixture(autouse=True)
     def setup(self):
-        self.cfg = config_loader.load("config/application.yaml")
+        self.cfg = config_loader.load()
         self.engine = create_engine(self.cfg.database.url)
         self.rag_engine = RAGQueryEngine()
         self.processor = EmbeddingProcessor()

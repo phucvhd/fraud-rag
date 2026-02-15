@@ -1,8 +1,8 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from rag_service import RAGQueryEngine
+from services.api.rag_service import RAGQueryEngine
 
-app = FastAPI(title="Fraud RAG API")
+app = FastAPI()
 engine = RAGQueryEngine()
 
 class QueryRequest(BaseModel):

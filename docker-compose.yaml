@@ -10,7 +10,24 @@ services:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
       POSTGRES_DB: fraud_db
+    volumes:
+      - pgdata:/var/lib/postgresql/data
 
+  rag-api:
+    build: .
+    ports:
+      - "8001:8000"
+    environment:
+      - DATABASE_URL=postgresql://user:password@db:5432/fraud_db
+      - HF_HOME=/app/model_cache
+      - APP_ENV=prod
+    volumes:
+      - ./model_cache:/app/model_cache
+    depends_on:
+      - postgres
+
+volumes:
+  pgdata:
 #  zookeeper:
 #    image: confluentinc/cp-zookeeper:7.4.0
 #    hostname: zookeeper

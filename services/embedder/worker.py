@@ -12,7 +12,7 @@ logger = logging.getLogger("EmbeddingWorker")
 
 class EmbeddingWorker:
     def __init__(self):
-        self.cfg = config_loader.load("config/application.yaml")
+        self.cfg = config_loader.load()
         self.engine = create_engine(self.cfg.database.url)
         self.processor = EmbeddingProcessor()
 

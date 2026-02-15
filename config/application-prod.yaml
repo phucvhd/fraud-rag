@@ -1,0 +1,18 @@
+database:
+  url: "postgresql://user:password@postgres:5432/fraud_db"
+  batch_size: 50
+
+kafka:
+  bootstrap_servers: "localhost:9092"
+  topic: "transaction-decisions"
+  group_id: "fraud-rag-group"
+
+embedding:
+  model_name: "all-MiniLM-L6-v2"
+  dimension: 384
+
+llm:
+  provider: "ollama"
+  base_url: "http://localhost:11434/v1"
+  api_key: "ollama"
+  model_name: "llama3"

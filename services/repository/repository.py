@@ -7,7 +7,7 @@ from database.model import TransactionModel
 
 class TransactionRepository:
     def __init__(self):
-        self.cfg = config_loader.load("config/application.yaml")
+        self.cfg = config_loader.load()
         self.engine = create_engine(self.cfg.database.url)
 
     def insert_if_not_exists(self, transaction: TransactionCanonical):
