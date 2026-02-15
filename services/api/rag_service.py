@@ -1,7 +1,8 @@
-import openai
-from sqlalchemy import create_engine, text
+from openai import OpenAI
+from sqlalchemy import create_engine, select
 from sentence_transformers import SentenceTransformer
 from shared.config_loader import config_loader
+from database.model import TransactionModel, EmbeddingModel
 
 
 class RAGQueryEngine:
@@ -10,55 +11,55 @@ class RAGQueryEngine:
         self.engine = create_engine(self.cfg.database.url)
         self.embedder = SentenceTransformer(self.cfg.embedding.model_name)
 
-        openai.api_key = self.cfg.llm.api_key
+        self.client = OpenAI(
+            base_url=self.cfg.llm.base_url,
+            api_key=self.cfg.llm.api_key
+        )
 
-    def _get_semantic_context(self, query: str, top_k: int):
+    def _retrieve_context(self, query: str, top_k: int):
         query_vector = self.embedder.encode(query).tolist()
 
-        sql = text("""
-            SELECT t.amount, t.event_timestamp, e.embedding_text
-            FROM transactions t
-            JOIN transaction_embeddings e ON t.transaction_id = e.transaction_id
-            ORDER BY e.embedding <-> :vector
-            LIMIT :limit
-        """)
+        stmt = (
+            select(
+                TransactionModel.amount,
+                TransactionModel.event_timestamp,
+                EmbeddingModel.embedding_text
+            )
+            .join(EmbeddingModel, TransactionModel.transaction_id == EmbeddingModel.transaction_id)
+            .order_by(EmbeddingModel.embedding.l2_distance(query_vector))
+            .limit(top_k)
+        )
 
         with self.engine.connect() as conn:
-            results = conn.execute(sql, {
-                "vector": str(query_vector),
-                "limit": top_k
-            }).mappings().all()
-        return results
+            return conn.execute(stmt).mappings().all()
 
-    def _build_prompt(self, query: str, context_results: list) -> str:
-        context_block = "\n".join([
-            f"- [{r.event_timestamp}] Amount: {r.amount} | Details: {r.embedding_text}"
-            for r in context_results
+    def _generate_response(self, query: str, context: list):
+        context_text = "\n".join([
+            f"Time: {r['event_timestamp']} | Amount: {r['amount']} | Details: {r['embedding_text']}"
+            for r in context
         ])
 
-        return f"""
-        You are an expert Fraud Investigator. 
-        Analyze the following real-time transactions retrieved from our Kafka stream.
+        prompt = f"""
+        You are a Fraud Detection Expert. Analyze the following transactions retrieved from our database:
 
-        RELEVANT TRANSACTIONS:
-        {context_block}
+        {context_text}
 
-        INVESTIGATION QUERY: {query}
+        Question: {query}
 
-        Provide a concise risk assessment based ONLY on the provided context.
+        Instructions:
+        1. Identify any transaction with amount > 1000 EUR.
+        2. If found, list them and explain why they might be suspicious.
+        3. Answer in English, but start with 'Có' if suspicious transactions are found, or 'Không' if none are found.
         """
 
-    def generate_answer(self, user_query: str, top_k: int = 5):
-        context = self._get_semantic_context(user_query, top_k)
-
-        if not context:
-            return "No relevant streaming data found for this query."
-
-        prompt = self._build_prompt(user_query, context)
-
-        response = openai.ChatCompletion.create(
+        response = self.client.chat.completions.create(
             model=self.cfg.llm.model_name,
-            messages=[{"role": "system", "content": "You are a helpful fraud detection assistant."},
-                      {"role": "user", "content": prompt}]
+            messages=[{"role": "user", "content": prompt}]
         )
         return response.choices[0].message.content
+
+    def ask(self, query: str, top_k: int = 5):
+        context = self._retrieve_context(query, top_k)
+        if not context:
+            return "No data found."
+        return self._generate_response(query, context)

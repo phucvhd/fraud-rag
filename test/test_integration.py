@@ -4,6 +4,7 @@ from uuid import uuid4
 from datetime import datetime
 
 from services.consumer.consumer import FraudTransactionConsumer
+from services.embedder.worker import EmbeddingWorker
 
 
 class KafkaMockProducer:
@@ -34,6 +35,9 @@ class KafkaMockProducer:
 if __name__ == "__main__":
     consumer = FraudTransactionConsumer()
     consumer.start()
+
+    embedder = EmbeddingWorker()
+    embedder.start()
 
     tester = KafkaMockProducer('localhost:9092')
     tester.send_mock_transaction('transaction-decisions')
