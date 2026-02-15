@@ -1,0 +1,17 @@
+database:
+  url: "postgresql://user:password@localhost:5432/fraud_db"
+  batch_size: 50
+
+kafka:
+  bootstrap_servers: "localhost:9092"
+  topic: "transaction-decisions"
+  group_id: "fraud-rag-group"
+
+embedding:
+  model_name: "all-MiniLM-L6-v2"
+  dimension: 384
+
+llm:
+  provider: "openai"
+  api_key: "your-key-here"
+  model_name: "gpt-4"
