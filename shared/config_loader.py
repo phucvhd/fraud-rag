@@ -20,6 +20,7 @@ class LLMConfig(BaseModel):
     provider: str
     api_key: str
     model_name: str
+    base_url: str
 
 class ApplicationConfig(BaseModel):
     database: DatabaseConfig
