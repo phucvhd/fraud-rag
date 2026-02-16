@@ -1,3 +1,4 @@
+import uvicorn
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from services.api.rag_service import RAGQueryEngine
@@ -25,5 +26,4 @@ async def ask_retrieval_augmented_generation(query: QueryRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
-    import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -1,5 +1,7 @@
 import json
 import logging
+import os
+
 from confluent_kafka import Consumer, KafkaError
 
 from services.repository.repository import TransactionRepository

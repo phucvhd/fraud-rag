@@ -14,13 +14,13 @@ class KafkaMockProducer:
     def send_mock_transaction(self, topic: str):
         mock_data = {
             "transaction_id": str(uuid4()),
-            # "event_time_seconds": 12345,
-            "amount": 99.99,
+            "Time": 12345,
+            "Amount": 99.99,
             "is_fraud": False,
             "features": {f"V{i}": 0.123 for i in range(1, 29)},
-            # "event_timestamp": datetime.now().isoformat(),
-            # "data_source": "test_manual",
-            # "created_at": datetime.now().isoformat()
+            "event_timestamp": datetime.now().isoformat(),
+            "data_source": "test_manual",
+            "created_at": datetime.now().isoformat()
         }
 
         self.producer.produce(
@@ -33,11 +33,11 @@ class KafkaMockProducer:
 
 
 if __name__ == "__main__":
-    consumer = FraudTransactionConsumer()
-    consumer.start()
-
-    embedder = EmbeddingWorker()
-    embedder.start()
+    # consumer = FraudTransactionConsumer()
+    # consumer.start()
+    #
+    # embedder = EmbeddingWorker()
+    # embedder.start()
 
     tester = KafkaMockProducer('localhost:9092')
     tester.send_mock_transaction('transaction-decisions')

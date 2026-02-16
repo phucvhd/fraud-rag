@@ -31,9 +31,9 @@ class TestFraudRAG:
             conn.execute(
                 insert(TransactionModel).values(
                     transaction_id=self.test_id,
-                    event_time_seconds=int(datetime.now().timestamp()),
+                    Time=int(datetime.now().timestamp()),
                     event_timestamp=datetime.now(),
-                    amount=amount,
+                    Amount=amount,
                     is_fraud=True,
                     features=features,
                     data_source="integration_test"

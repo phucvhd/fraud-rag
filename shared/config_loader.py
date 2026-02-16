@@ -50,6 +50,8 @@ class ConfigLoader:
                 file_name = f"application-{env}.yaml" if env else "application.yaml"
                 config_path = f"config/{file_name}"
 
+                print(f"Loading config: {file_name}")
+
             full_path = project_root / config_path
 
             if not full_path.exists():

@@ -15,6 +15,15 @@ class RAGQueryEngine:
             base_url=self.cfg.llm.base_url,
             api_key=self.cfg.llm.api_key
         )
+        self._check_llm_connection()
+
+    def _check_llm_connection(self):
+        try:
+            self.client.models.list()
+            print(f"LLM Connection successful: {self.cfg.llm.base_url}")
+        except Exception as e:
+            print(f"Failed to connect to LLM at {self.cfg.llm.base_url}")
+            print(f"Error detail: {e}")
 
     def _retrieve_context(self, query: str, top_k: int):
         query_vector = self.embedder.encode(query).tolist()
@@ -49,7 +58,7 @@ class RAGQueryEngine:
         Instructions:
         1. Identify any transaction with amount > 1000 EUR.
         2. If found, list them and explain why they might be suspicious.
-        3. Answer in English, but start with 'Có' if suspicious transactions are found, or 'Không' if none are found.
+        3. Answer in English.
         """
 
         response = self.client.chat.completions.create(

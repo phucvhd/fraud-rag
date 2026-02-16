@@ -3,7 +3,7 @@ database:
   batch_size: 50
 
 kafka:
-  bootstrap_servers: "localhost:9092"
+  bootstrap_servers: "kafka:29092"
   topic: "transaction-decisions"
   group_id: "fraud-rag-group"
 
@@ -13,6 +13,6 @@ embedding:
 
 llm:
   provider: "ollama"
-  base_url: "http://localhost:11434/v1"
+  base_url: "http://ollama:11434/v1"
   api_key: "ollama"
   model_name: "llama3"
