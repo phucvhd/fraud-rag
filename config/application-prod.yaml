@@ -12,7 +12,7 @@ embedding:
   dimension: 384
 
 llm:
-  provider: "ollama"
-  base_url: "http://ollama:11434/v1"
-  api_key: "ollama"
-  model_name: "llama3"
+  provider: "openai"
+  base_url: "https://api.openai.com/v1"
+  api_key: "${OPENAI_API_KEY}"
+  model_name: "gpt-4o"

@@ -25,6 +25,7 @@ services:
       - DATABASE_URL=postgresql://user:password@postgres:5432/fraud_db
       - HF_HOME=/app/model_cache
       - APP_ENV=prod
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
     volumes:
       - ./model_cache:/app/model_cache
     depends_on:
