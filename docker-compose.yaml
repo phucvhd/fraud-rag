@@ -18,7 +18,7 @@ services:
   rag-api:
     build: .
     ports:
-      - "8001:8000"
+      - "8002:8000"
     networks:
       - fraud-net
     environment:
@@ -33,39 +33,22 @@ services:
     command: > 
       uvicorn services.api.main:app --host 0.0.0.0 --port 8000 --log-level debug
 
-  kafka-consumer:
-    build: .
-    command: python services/consumer/consumer.py
-    networks:
-      - fraud-net
-    environment:
-      APP_ENV: prod
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-    depends_on:
-      - postgres
-
-  embedder-worker:
-    build: .
-    command: python services/embedder/worker.py
-    networks:
-      - fraud-net
-    environment:
-      - APP_ENV=prod
-      - HF_HOME=/app/model_cache
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
     volumes:
-      - ./model_cache:/app/model_cache
-    depends_on:
-      - postgres
-
-#  ollama:
-#    image: ollama/ollama:latest
-#    container_name: ollama
-#    ports:
-#      - "11434:11434"
-#    volumes:
-#      - ollama_data:/root/.ollama
-#    networks:
-#      - fraud-net
+      - ollama_data:/root/.ollama
+    networks:
+      - fraud-net
+    entrypoint: >
+      sh -c "
+        ollama serve &
+        sleep 3 &&
+        ollama pull llama3 &&
+        wait
+      "
 
 volumes:
   pgdata:

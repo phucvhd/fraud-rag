@@ -42,6 +42,7 @@ class EmbeddingWorker:
             conn.execute(stmt)
 
     def start(self):
+        print("Embedding worker started")
         while True:
             try:
                 jobs = self._fetch_pending()

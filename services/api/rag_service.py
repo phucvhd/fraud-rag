@@ -68,6 +68,7 @@ class RAGQueryEngine:
         return response.choices[0].message.content
 
     def ask(self, query: str, top_k: int = 5):
+        print("Start retrieving context")
         context = self._retrieve_context(query, top_k)
         if not context:
             return "No data found."

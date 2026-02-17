@@ -32,6 +32,7 @@ class FraudTransactionConsumer:
 
     def start(self):
         self.consumer.subscribe([self.cfg.kafka.topic])
+        print("Consumer worker started")
         try:
             while True:
                 msg = self.consumer.poll(1.0)
