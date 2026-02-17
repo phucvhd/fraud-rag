@@ -12,7 +12,7 @@ from shared.config_loader import config_loader
 class TestFraudRAG:
     @pytest.fixture(autouse=True)
     def setup(self):
-        self.cfg = config_loader.load("config/application.yaml")
+        self.cfg = config_loader.load()
         self.engine = create_engine(self.cfg.database.url)
         self.rag_engine = RAGQueryEngine()
         self.processor = EmbeddingProcessor()
@@ -31,9 +31,9 @@ class TestFraudRAG:
             conn.execute(
                 insert(TransactionModel).values(
                     transaction_id=self.test_id,
-                    event_time_seconds=int(datetime.now().timestamp()),
+                    Time=int(datetime.now().timestamp()),
                     event_timestamp=datetime.now(),
-                    amount=amount,
+                    Amount=amount,
                     is_fraud=True,
                     features=features,
                     data_source="integration_test"

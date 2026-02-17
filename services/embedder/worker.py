@@ -1,3 +1,4 @@
+import os
 import time
 import logging
 from sqlalchemy import create_engine, select
@@ -12,7 +13,7 @@ logger = logging.getLogger("EmbeddingWorker")
 
 class EmbeddingWorker:
     def __init__(self):
-        self.cfg = config_loader.load("config/application.yaml")
+        self.cfg = config_loader.load()
         self.engine = create_engine(self.cfg.database.url)
         self.processor = EmbeddingProcessor()
 
@@ -41,6 +42,7 @@ class EmbeddingWorker:
             conn.execute(stmt)
 
     def start(self):
+        print("Embedding worker started")
         while True:
             try:
                 jobs = self._fetch_pending()

@@ -1,5 +1,7 @@
 import json
 import logging
+import os
+
 from confluent_kafka import Consumer, KafkaError
 
 from services.repository.repository import TransactionRepository
@@ -11,7 +13,7 @@ logger = logging.getLogger("FraudConsumer")
 
 class FraudTransactionConsumer:
     def __init__(self):
-        self.cfg = config_loader.load("config/application.yaml")
+        self.cfg = config_loader.load()
         self.repo = TransactionRepository()
         self.consumer = Consumer({
             'bootstrap.servers': self.cfg.kafka.bootstrap_servers,
@@ -30,6 +32,7 @@ class FraudTransactionConsumer:
 
     def start(self):
         self.consumer.subscribe([self.cfg.kafka.topic])
+        print("Consumer worker started")
         try:
             while True:
                 msg = self.consumer.poll(1.0)
