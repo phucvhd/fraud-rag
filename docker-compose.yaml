@@ -31,7 +31,7 @@ services:
     depends_on:
       - postgres
     command: > 
-      uvicorn services.api.main:app --host 0.0.0.0 --port 8000 --log-level debug
+      uvicorn services.api.main:app --host 0.0.0.0 --port 8000
 
   ollama:
     image: ollama/ollama:latest
@@ -68,7 +68,6 @@ services:
         export PYTHONPATH=/app:/app/services/streamlit:/app/config:/app/shared &&
         streamlit run services/streamlit/app.py --server.port=8501 --server.address=0.0.0.0 --server.enableCORS=false --server.enableXsrfProtection=false
       "
-#    restart: unless-stopped
     networks:
       - fraud-net
 
