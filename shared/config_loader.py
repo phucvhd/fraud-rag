@@ -24,12 +24,16 @@ class LLMConfig(BaseModel):
     model_name: str
     base_url: str
 
+class DashboardConfig(BaseModel):
+    rag_url: str
+    inject_url: str
+
 class ApplicationConfig(BaseModel):
     database: DatabaseConfig
     kafka: KafkaConfig
     embedding: EmbeddingConfig
     llm: LLMConfig
-
+    dashboard: DashboardConfig
 
 class ConfigLoader:
     _instance = None

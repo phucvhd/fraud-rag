@@ -16,3 +16,7 @@ llm:
   base_url: "http://localhost:11434/v1"
   api_key: "ollama"
   model_name: "llama3"
+
+dashboard:
+  rag_url: "http://localhost:8002/ask"
+  inject_url: "http://localhost:8000/transaction/inject?duration_seconds=1"
