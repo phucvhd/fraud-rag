@@ -50,6 +50,28 @@ services:
         wait
       "
 
+  transaction-dashboard:
+    image: python:3.12-slim
+    container_name: transaction-monitor
+    ports:
+      - "8501:8501"
+    environment:
+      - APP_ENV=prod
+    volumes:
+      - ./services/streamlit:/app/services/streamlit
+      - ./config:/app/config
+      - ./shared:/app/shared
+    working_dir: /app
+    command: >
+      bash -c "
+        pip install --no-cache-dir streamlit>=1.38.0 requests>=2.31.0 pandas>=2.2.0 confluent-kafka>=2.3.0 docker>=7.1.0 pyyaml>=6.0 pydantic>=2.5.0 &&
+        export PYTHONPATH=/app:/app/services/streamlit:/app/config:/app/shared &&
+        streamlit run services/streamlit/app.py --server.port=8501 --server.address=0.0.0.0 --server.enableCORS=false --server.enableXsrfProtection=false
+      "
+#    restart: unless-stopped
+    networks:
+      - fraud-net
+
 volumes:
   pgdata:
   ollama_data:

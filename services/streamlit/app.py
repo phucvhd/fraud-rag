@@ -15,13 +15,13 @@ from shared.config_loader import config_loader
 
 st.set_page_config(page_title="Fraud RAG & Kafka Dashboard", layout="wide")
 
-API_URL = "http://localhost:8002/ask"
-INJECT_URL = "http://localhost:8000/transaction/inject?duration_seconds=1"
+cfg = config_loader.load()
+RAG_URL = cfg.dashboard.rag_url
+INJECT_URL = cfg.dashboard.inject_url
 
 TOPIC_TRANSACTIONS = "transactions"
 TOPIC_DECISIONS = "transaction-decisions"
 
-cfg = config_loader.load()
 KAFKA_CONFIG = {
     'bootstrap.servers': cfg.kafka.bootstrap_servers,
     'group.id': 'fraud-detection-client-consumer-group',
@@ -156,7 +156,7 @@ with col_btn1:
         else:
             try:
                 payload = {"prompt": prompt, "top_k": int(top_k)}
-                resp = requests.post(API_URL, json=payload, timeout=None)
+                resp = requests.post(RAG_URL, json=payload, timeout=None)
                 if resp.status_code == 200:
                     data = resp.json()
                     answer = data.get("answer", "")
