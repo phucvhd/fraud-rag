@@ -13,7 +13,7 @@ import time
 sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 from shared.config_loader import config_loader
 
-st.set_page_config(page_title="Fraud RAG & Kafka Dashboard", layout="wide")
+st.set_page_config(page_title="Transaction Dashboard", layout="wide")
 
 cfg = config_loader.load()
 RAG_URL = cfg.dashboard.rag_url
@@ -139,7 +139,7 @@ def build_counts_df():
 
 st.set_page_config(page_title="Transaction Monitor", layout="wide")
 st.title("Transaction Monitor")
-st.subheader("Kafka Topic Activity")
+st.subheader("Message Activity")
 
 prompt = st.text_area(
     "RAG Prompt",
