@@ -13,10 +13,39 @@ embedding:
 
 llm:
   provider: "ollama"
-  base_url: "http://localhost:11434/v1"
+  base_url: "http://localhost:1234/v1"
   api_key: "ollama"
   model_name: "llama3"
 
 dashboard:
   rag_url: "http://localhost:8002/ask"
   inject_url: "http://localhost:8000/transaction/inject?duration_seconds=1"
+
+correlation_analysis:
+  features:
+    V17: -0.326481
+    V14: -0.302544
+    V12: -0.260593
+    V10: -0.216883
+    V16: -0.196539
+    V3:  -0.192961
+    V7:  -0.187257
+    V11:  0.154876
+    V4:   0.133447
+    V18: -0.111485
+    V1:  -0.101347
+    V9:  -0.097733
+    V5:  -0.094974
+    V2:   0.091289
+    V6:  -0.043643
+    V21:  0.040413
+    V19:  0.034783
+    V20:  0.020090
+    V8:   0.019875
+    V27:  0.017580
+    V28:  0.009536
+
+  thresholds:
+    critical_negative: -2.0
+    critical_positive: 2.0
+    high_impact_abs: 0.2

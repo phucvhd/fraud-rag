@@ -1,29 +1,18 @@
-from openai import OpenAI
+from langchain_core.messages import HumanMessage
 from sqlalchemy import create_engine, select
 from sentence_transformers import SentenceTransformer
+
+from services.agent.agent import LLMAgent
 from shared.config_loader import config_loader
 from database.model import TransactionModel, EmbeddingModel
 
 
 class RAGQueryEngine:
-    def __init__(self):
+    def __init__(self, agent):
         self.cfg = config_loader.load()
         self.engine = create_engine(self.cfg.database.url)
         self.embedder = SentenceTransformer(self.cfg.embedding.model_name)
-
-        self.client = OpenAI(
-            base_url=self.cfg.llm.base_url,
-            api_key=self.cfg.llm.api_key
-        )
-        self._check_llm_connection()
-
-    def _check_llm_connection(self):
-        try:
-            self.client.models.list()
-            print(f"LLM Connection successful: {self.cfg.llm.base_url}")
-        except Exception as e:
-            print(f"Failed to connect to LLM at {self.cfg.llm.base_url}")
-            print(f"Error detail: {e}")
+        self.agent = agent
 
     def _retrieve_context(self, query: str, top_k: int):
         query_vector = self.embedder.encode(query).tolist()
@@ -61,13 +50,15 @@ class RAGQueryEngine:
         3. Answer in English.
         """
 
-        response = self.client.chat.completions.create(
-            model=self.cfg.llm.model_name,
-            messages=[{"role": "user", "content": prompt}]
-        )
-        return response.choices[0].message.content
+        llm = self.agent.get_client()
 
-    def ask(self, query: str, top_k: int = 5):
+        response = llm.invoke([
+            HumanMessage(content=prompt)
+        ])
+
+        return response.content
+
+    def historical_db_lookup(self, query: str, top_k: int = 5):
         print("Start retrieving context")
         context = self._retrieve_context(query, top_k)
         if not context:
