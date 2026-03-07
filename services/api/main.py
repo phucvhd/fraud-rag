@@ -6,20 +6,20 @@ from fastapi import FastAPI, HTTPException
 
 from schemas.dto import QueryResponse, QueryRequest
 from services.agent.agent import LLMAgent
-from services.api.rag_service import RAGQueryEngine
+from services.agent.graph import FraudInspectorGraph
+from services.agent.sentence_transformer import SentenceTransformerModel
 from services.consumer.consumer import FraudTransactionConsumer
 from services.embedder.worker import EmbeddingWorker
-from services.tool.fraud_agent_tool import FraudInspector
 from shared.config_loader import ConfigLoader
 
 consumer = FraudTransactionConsumer()
 config_loader = ConfigLoader()
-embedder = EmbeddingWorker()
+sentence_transformer_model = SentenceTransformerModel()
+embedder = EmbeddingWorker(sentence_transformer_model)
 
 cfg = config_loader.load()
 agent = LLMAgent()
-engine = RAGQueryEngine(agent)
-inspector = FraudInspector(cfg, agent, engine)
+inspector = FraudInspectorGraph(agent)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -41,8 +41,9 @@ def health_check():
     return {"status": "healthy"}
 
 @app.post("/ask", response_model=QueryResponse)
-async def ask_retrieval_augmented_generation(query: QueryRequest):
+async def ask_anomaly_analysis(query: QueryRequest):
     try:
+        print("Received anomaly analysis request")
         answer = await inspector.run(query)
         return QueryResponse(answer=answer)
     except Exception as e:

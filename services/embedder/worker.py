@@ -4,6 +4,7 @@ import logging
 from sqlalchemy import create_engine, select
 from sqlalchemy.dialects.postgresql import insert
 
+from services.agent.sentence_transformer import SentenceTransformerModel
 from services.embedder.processor import EmbeddingProcessor
 from shared.config_loader import config_loader
 from database.model import TransactionModel, EmbeddingModel
@@ -12,10 +13,10 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("EmbeddingWorker")
 
 class EmbeddingWorker:
-    def __init__(self):
+    def __init__(self, sentence_transformer_model: SentenceTransformerModel):
         self.cfg = config_loader.load()
         self.engine = create_engine(self.cfg.database.url)
-        self.processor = EmbeddingProcessor()
+        self.processor = EmbeddingProcessor(sentence_transformer_model)
 
     def _fetch_pending(self):
         stmt = (
@@ -60,6 +61,3 @@ class EmbeddingWorker:
             except Exception as e:
                 logger.error(f"Error: {e}")
                 time.sleep(5)
-
-if __name__ == "__main__":
-    EmbeddingWorker().start()
