@@ -1,6 +1,5 @@
-import pytest
 from unittest.mock import patch, MagicMock
-from services.api.rag_service import RAGQueryEngine
+from services.tool.rag_service import RAGQueryEngine
 
 @patch("services.api.rag_service.OpenAI")
 @patch("services.api.rag_service.SentenceTransformer")

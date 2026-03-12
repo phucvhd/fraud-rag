@@ -3,26 +3,23 @@ from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
 
-from services.api.rag_service import RAGQueryEngine
+from schemas.dto import QueryResponse, QueryRequest
+from services.agent.agent import LLMAgent
+from services.agent.graph import FraudInspectorGraph
+from services.agent.sentence_transformer import SentenceTransformerModel
 from services.consumer.consumer import FraudTransactionConsumer
 from services.embedder.worker import EmbeddingWorker
 from shared.config_loader import ConfigLoader
 
 consumer = FraudTransactionConsumer()
 config_loader = ConfigLoader()
-embedder = EmbeddingWorker()
-
-class QueryRequest(BaseModel):
-    prompt: str
-    top_k: int = 5
-
-class QueryResponse(BaseModel):
-    answer: str
+sentence_transformer_model = SentenceTransformerModel()
+embedder = EmbeddingWorker(sentence_transformer_model)
 
 cfg = config_loader.load()
-engine = RAGQueryEngine()
+agent = LLMAgent()
+inspector = FraudInspectorGraph(agent)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -44,9 +41,10 @@ def health_check():
     return {"status": "healthy"}
 
 @app.post("/ask", response_model=QueryResponse)
-async def ask_retrieval_augmented_generation(query: QueryRequest):
+async def ask_anomaly_analysis(query: QueryRequest):
     try:
-        answer = engine.ask(query.prompt, query.top_k)
+        print("Received anomaly analysis request")
+        answer = await inspector.run(query)
         return QueryResponse(answer=answer)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

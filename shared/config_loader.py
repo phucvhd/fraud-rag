@@ -28,12 +28,17 @@ class DashboardConfig(BaseModel):
     rag_url: str
     inject_url: str
 
+class CorrelationAnalysisConfig(BaseModel):
+    features: dict
+    thresholds: dict
+
 class ApplicationConfig(BaseModel):
     database: DatabaseConfig
     kafka: KafkaConfig
     embedding: EmbeddingConfig
     llm: LLMConfig
     dashboard: DashboardConfig
+    correlation_analysis: CorrelationAnalysisConfig
 
 class ConfigLoader:
     _instance = None
