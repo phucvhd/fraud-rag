@@ -1,1 +1,33 @@
-.env*
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+env/
+venv/
+
+# macOS
+.DS_Store
+
+# VS Code
+.vscode/
+
+# Logs
+*.log
+
+# JetBrains IDE settings
+.idea/
+
+# Environment variables
+.env
+.env.*
+
+.idea
+
+alembic
+alembic.ini
+
+model_cache
