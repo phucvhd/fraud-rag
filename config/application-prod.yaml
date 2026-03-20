@@ -1,5 +1,5 @@
 database:
-  url: "postgresql://user:password@postgres:5432/fraud_db"
+  url: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}"
   batch_size: 50
 
 kafka:
@@ -55,3 +55,9 @@ correlation_analysis:
     critical_negative: -2.0
     critical_positive: 2.0
     high_impact_abs: 0.2
+
+mcp_servers:
+  analysis:
+    url: "http://mcp-analysis:8004/sse"
+  repository:
+    url: "http://mcp-repository:8003/sse"

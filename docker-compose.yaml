@@ -9,29 +9,16 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: fraud_db
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - pgdata:/var/lib/postgresql/data
-
-  rag-api:
-    build: .
-    ports:
-      - "8002:8000"
-    networks:
-      - fraud-net
-    environment:
-      - DATABASE_URL=postgresql://user:password@postgres:5432/fraud_db
-      - HF_HOME=/app/model_cache
-      - APP_ENV=prod
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-    volumes:
-      - ./model_cache:/app/model_cache
-    depends_on:
-      - postgres
-    command: > 
-      uvicorn services.api.main:app --host 0.0.0.0 --port 8000
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   ollama:
     image: ollama/ollama:latest
@@ -42,32 +29,81 @@ services:
       - ollama_data:/root/.ollama
     networks:
       - fraud-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:11434/api/tags || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
     entrypoint: >
       sh -c "
         ollama serve &
-        sleep 3 &&
+        until curl -sf http://localhost:11434/api/tags; do sleep 2; done &&
         ollama pull llama3 &&
         wait
       "
 
+  mcp-repository:
+    build: .
+    container_name: mcp-repository
+    networks:
+      - fraud-net
+    ports:
+      - "8003:8003"
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - HF_HOME=/app/model_cache
+      - APP_ENV=prod
+    volumes:
+      - ./model_cache:/app/model_cache
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: python -m services.mcp_server.repository_server
+
+  mcp-analysis:
+    build: .
+    container_name: mcp-analysis
+    networks:
+      - fraud-net
+    ports:
+      - "8004:8004"
+    environment:
+      - APP_ENV=prod
+    command: python -m services.mcp_server.analysis_server
+
+  rag-api:
+    build: .
+    container_name: rag-api
+    ports:
+      - "8002:8000"
+    networks:
+      - fraud-net
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - HF_HOME=/app/model_cache
+      - APP_ENV=prod
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    volumes:
+      - ./model_cache:/app/model_cache
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mcp-repository:
+        condition: service_started
+      mcp-analysis:
+        condition: service_started
+    command: uvicorn services.api.main:app --host 0.0.0.0 --port 8000
+
   transaction-dashboard:
-    image: python:3.12-slim
+    build:
+      context: .
+      dockerfile: Dockerfile.dashboard
     container_name: transaction-monitor
     ports:
       - "8501:8501"
     environment:
       - APP_ENV=prod
-    volumes:
-      - ./services/streamlit:/app/services/streamlit
-      - ./config:/app/config
-      - ./shared:/app/shared
-    working_dir: /app
-    command: >
-      bash -c "
-        pip install --no-cache-dir streamlit>=1.38.0 requests>=2.31.0 pandas>=2.2.0 confluent-kafka>=2.3.0 docker>=7.1.0 pyyaml>=6.0 pydantic>=2.5.0 &&
-        export PYTHONPATH=/app:/app/services/streamlit:/app/config:/app/shared &&
-        streamlit run services/streamlit/app.py --server.port=8501 --server.address=0.0.0.0 --server.enableCORS=false --server.enableXsrfProtection=false
-      "
     networks:
       - fraud-net
 
@@ -77,4 +113,3 @@ volumes:
 
 networks:
   fraud-net:
-    external: true

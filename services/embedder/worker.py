@@ -1,6 +1,7 @@
-import os
-import time
 import logging
+import threading
+import time
+
 from sqlalchemy import create_engine, select
 from sqlalchemy.dialects.postgresql import insert
 
@@ -11,6 +12,7 @@ from database.model import TransactionModel, EmbeddingModel
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("EmbeddingWorker")
+
 
 class EmbeddingWorker:
     def __init__(self, sentence_transformer_model: SentenceTransformerModel):
@@ -26,7 +28,7 @@ class EmbeddingWorker:
                 TransactionModel.features
             )
             .outerjoin(EmbeddingModel, TransactionModel.transaction_id == EmbeddingModel.transaction_id)
-            .where(EmbeddingModel.transaction_id == None)
+            .where(EmbeddingModel.transaction_id == None)  # noqa: E711
             .limit(self.cfg.database.batch_size)
         )
         with self.engine.connect() as conn:
@@ -42,9 +44,9 @@ class EmbeddingWorker:
         with self.engine.begin() as conn:
             conn.execute(stmt)
 
-    def start(self):
-        print("Embedding worker started")
-        while True:
+    def start(self, stop_event: threading.Event | None = None):
+        logger.info("Embedding worker started")
+        while not (stop_event and stop_event.is_set()):
             try:
                 jobs = self._fetch_pending()
                 if not jobs:
@@ -57,7 +59,7 @@ class EmbeddingWorker:
                         job["features"]
                     )
                     self._save_vector(job["transaction_id"], vector, txt)
-                    logger.info(f"Embedded: {job['transaction_id']}")
+                    logger.info("Embedded: %s", job["transaction_id"])
             except Exception as e:
-                logger.error(f"Error: {e}")
+                logger.error("Error: %s", e)
                 time.sleep(5)

@@ -28,6 +28,13 @@ class DashboardConfig(BaseModel):
     rag_url: str
     inject_url: str
 
+class MCPServerConfig(BaseModel):
+    url: str
+
+class MCPServersConfig(BaseModel):
+    analysis: MCPServerConfig
+    repository: MCPServerConfig
+
 class CorrelationAnalysisConfig(BaseModel):
     features: dict
     thresholds: dict
@@ -39,6 +46,7 @@ class ApplicationConfig(BaseModel):
     llm: LLMConfig
     dashboard: DashboardConfig
     correlation_analysis: CorrelationAnalysisConfig
+    mcp_servers: MCPServersConfig
 
 class ConfigLoader:
     _instance = None

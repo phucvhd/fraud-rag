@@ -1,24 +1,22 @@
+import logging
+
 from langchain_openai import ChatOpenAI
-from shared.config_loader import config_loader
 from pydantic import SecretStr
+
+from shared.config_loader import config_loader
+
+logger = logging.getLogger(__name__)
+
 
 class LLMAgent:
     def __init__(self):
-        self.cfg = config_loader.load()
+        cfg = config_loader.load()
         self.client = ChatOpenAI(
-            base_url=self.cfg.llm.base_url,
-            api_key=SecretStr("lm-studio"),
-            model="deepseek-r1-distill-qwen-7b"
+            base_url=cfg.llm.base_url,
+            api_key=SecretStr(cfg.llm.api_key),
+            model=cfg.llm.model_name,
         )
-        self._check_llm_connection()
-
-    def _check_llm_connection(self):
-        try:
-            model_name = self.client.model_name
-            print(f"LLM Connection successful: {model_name} - {self.cfg.llm.base_url}")
-        except Exception as e:
-            print(f"Failed to connect to LLM at {self.cfg.llm.base_url}")
-            print(f"Error detail: {e}")
+        logger.info("LLM initialised: %s - %s", cfg.llm.model_name, cfg.llm.base_url)
 
     def get_client(self):
         return self.client

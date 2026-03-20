@@ -8,6 +8,7 @@ from database.model import TransactionModel, EmbeddingModel
 
 logger = logging.getLogger(__name__)
 
+
 class RAGQueryEngine:
     def __init__(self, sentence_transformer_model: SentenceTransformerModel):
         self.cfg = config_loader.load()
@@ -33,8 +34,8 @@ class RAGQueryEngine:
             with self.engine.connect() as conn:
                 return conn.execute(stmt).mappings().all()
         except Exception as e:
-            logger.error("Query has been failed", e)
-            raise e
+            logger.error("Query failed: %s", e)
+            raise
 
     def context_lookup(self, query: str, top_k: int = 5) -> str:
         """
@@ -50,8 +51,8 @@ class RAGQueryEngine:
                 f"TransactionId: {r['transaction_id']} | Time: {r['event_timestamp']} | Amount: {r['amount']} | Details: {r['embedding_text']}"
                 for r in context
             ])
-            logger.info("Retrieve context successfully")
+            logger.info("Retrieved context successfully")
             return context_text
         except Exception as e:
-            logger.error("Failed when transforming context", e)
-            raise e
+            logger.error("Failed when transforming context: %s", e)
+            raise
