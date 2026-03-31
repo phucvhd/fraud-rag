@@ -27,7 +27,4 @@ venv/
 
 .idea
 
-alembic
-alembic.ini
-
 model_cache

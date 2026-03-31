@@ -67,6 +67,7 @@ class FraudInspectorGraph:
             f" - Transaction ID\n"
             f" - Transaction Time\n"
             f" - Amount\n"
+            f" - Impact\n"
             f" - Relevant Features (V1, V2, etc.)\n"
             f"Do not filter out any results. Include all {request.top_k} transactions retrieved regardless of whether they are anomalous.\n"
             f"CRITICAL: If you use the interpret_fraud_features tool, you MUST pass a SINGLE dictionary containing the V-features for ONE transaction (e.g. {{'V1': 1.2, 'V2': -0.5}}). NEVER pass a list of dictionaries.\n"

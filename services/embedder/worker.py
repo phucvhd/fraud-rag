@@ -2,13 +2,11 @@ import logging
 import threading
 import time
 
-from sqlalchemy import create_engine, select
-from sqlalchemy.dialects.postgresql import insert
-
+from schemas.transaction import TransactionEmbedding
 from services.agent.sentence_transformer import SentenceTransformerModel
 from services.embedder.processor import EmbeddingProcessor
+from services.repository.embedding_repository import TransactionEmbeddingRepository
 from shared.config_loader import config_loader
-from database.model import TransactionModel, EmbeddingModel
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("EmbeddingWorker")
@@ -17,38 +15,14 @@ logger = logging.getLogger("EmbeddingWorker")
 class EmbeddingWorker:
     def __init__(self, sentence_transformer_model: SentenceTransformerModel):
         self.cfg = config_loader.load()
-        self.engine = create_engine(self.cfg.database.url)
+        self.repo = TransactionEmbeddingRepository()
         self.processor = EmbeddingProcessor(sentence_transformer_model)
-
-    def _fetch_pending(self):
-        stmt = (
-            select(
-                TransactionModel.transaction_id,
-                TransactionModel.amount,
-                TransactionModel.features
-            )
-            .outerjoin(EmbeddingModel, TransactionModel.transaction_id == EmbeddingModel.transaction_id)
-            .where(EmbeddingModel.transaction_id == None)  # noqa: E711
-            .limit(self.cfg.database.batch_size)
-        )
-        with self.engine.connect() as conn:
-            return conn.execute(stmt).mappings().all()
-
-    def _save_vector(self, t_id, vector, text_content):
-        stmt = insert(EmbeddingModel).values(
-            transaction_id=t_id,
-            embedding=vector,
-            embedding_text=text_content,
-            embedding_model=self.cfg.embedding.model_name
-        ).on_conflict_do_nothing(index_elements=['transaction_id'])
-        with self.engine.begin() as conn:
-            conn.execute(stmt)
 
     def start(self, stop_event: threading.Event | None = None):
         logger.info("Embedding worker started")
         while not (stop_event and stop_event.is_set()):
             try:
-                jobs = self._fetch_pending()
+                jobs = self.repo.fetch_pending(self.cfg.database.batch_size)
                 if not jobs:
                     time.sleep(2)
                     continue
@@ -56,9 +30,14 @@ class EmbeddingWorker:
                 for job in jobs:
                     vector, txt = self.processor.create_embedding(
                         job["amount"],
-                        job["features"]
+                        job["features"],
                     )
-                    self._save_vector(job["transaction_id"], vector, txt)
+                    self.repo.save(TransactionEmbedding(
+                        transaction_id=job["transaction_id"],
+                        embedding=vector,
+                        embedding_text=txt,
+                        embedding_model=self.cfg.embedding.model_name,
+                    ))
                     logger.info("Embedded: %s", job["transaction_id"])
             except Exception as e:
                 logger.error("Error: %s", e)

@@ -4,7 +4,7 @@ import threading
 
 from confluent_kafka import Consumer, KafkaError
 
-from services.repository.repository import TransactionRepository
+from services.repository.transaction_canonical_repository import TransactionRepository
 from shared.config_loader import config_loader
 from schemas.transaction import TransactionCanonical
 
