@@ -7,8 +7,8 @@ from services.agent.sentence_transformer import SentenceTransformerModel
 from services.embedder.processor import EmbeddingProcessor
 from services.repository.embedding_repository import TransactionEmbeddingRepository
 from shared.config_loader import config_loader
+from shared.logging_config import configure_logging
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("EmbeddingWorker")
 
 
@@ -42,3 +42,9 @@ class EmbeddingWorker:
             except Exception as e:
                 logger.error("Error: %s", e)
                 time.sleep(5)
+
+
+if __name__ == "__main__":
+    configure_logging()
+    worker = EmbeddingWorker(SentenceTransformerModel())
+    worker.start()

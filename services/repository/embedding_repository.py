@@ -19,7 +19,7 @@ class TransactionEmbeddingRepository(BaseRepository):
             .limit(batch_size)
         )
         with self.engine.connect() as conn:
-            return conn.execute(stmt).mappings().all()
+            return [dict(row) for row in conn.execute(stmt).mappings()]
 
     def save(self, embedding: TransactionEmbedding) -> None:
         data = embedding.model_dump()

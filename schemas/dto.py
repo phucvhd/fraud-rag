@@ -1,9 +1,9 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class QueryRequest(BaseModel):
     prompt: str
-    top_k: int = 5
+    top_k: int = Field(default=5, gt=0, le=50)
 
 
 class QueryResponse(BaseModel):

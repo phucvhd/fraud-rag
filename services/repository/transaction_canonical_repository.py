@@ -41,4 +41,5 @@ class TransactionCanonicalRepository(BaseRepository):
         return [dict(r) for r in rows]
 
 
+# Backwards-compatible name kept for existing call sites/tests.
 TransactionRepository = TransactionCanonicalRepository

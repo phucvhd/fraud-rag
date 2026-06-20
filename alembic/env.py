@@ -17,18 +17,12 @@ if config.config_file_name is not None:
 
 # add your model's MetaData object here
 # for 'autogenerate' support
-# from myapp import mymodel
-# target_metadata = mymodel.Base.metadata
-import yaml
 from database.model import Base
-
-with open("config/application.yaml", "r") as f:
-    config_yaml = yaml.safe_load(f)
+from shared.config_loader import config_loader
 
 target_metadata = Base.metadata
 
-# Ghi đè URL kết nối từ YAML vào config của Alembic
-config.set_main_option("sqlalchemy.url", config_yaml['database']['url'])
+config.set_main_option("sqlalchemy.url", config_loader.load().database.url)
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:

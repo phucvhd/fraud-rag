@@ -1,10 +1,11 @@
 import logging
 
-from sqlalchemy import create_engine, select
+from sqlalchemy import select
 
+from database.model import EmbeddingModel, TransactionModel
 from services.agent.sentence_transformer import SentenceTransformerModel
+from services.repository.base import get_engine
 from shared.config_loader import config_loader
-from database.model import TransactionModel, EmbeddingModel
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +13,7 @@ logger = logging.getLogger(__name__)
 class RAGQueryEngine:
     def __init__(self, sentence_transformer_model: SentenceTransformerModel):
         self.cfg = config_loader.load()
-        self.engine = create_engine(self.cfg.database.url)
+        self.engine = get_engine(self.cfg.database.url)
         self.embedder = sentence_transformer_model.get_model()
 
     def _retrieve_context(self, query: str, top_k: int):

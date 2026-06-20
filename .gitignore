@@ -24,7 +24,10 @@ venv/
 # Environment variables
 .env
 .env.*
+!.env.example
 
 .idea
 
 model_cache
+
+.claude/

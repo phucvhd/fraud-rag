@@ -7,4 +7,3 @@ from typing_extensions import TypedDict
 
 class GraphState(TypedDict):
     messages: Annotated[list[AnyMessage], operator.add]
-    llm_calls: int

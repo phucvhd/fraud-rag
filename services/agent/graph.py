@@ -11,6 +11,22 @@ from services.agent.state import GraphState
 from services.agent.agent import LLMAgent
 from shared.config_loader import config_loader
 
+_AGENT_INSTRUCTIONS = """\
+{prompt}
+
+Instructions:
+When invoking the context_lookup tool, you MUST explicitly pass `top_k={top_k}` as an argument rather than relying on its default value.
+You MUST format your final response as a clear, list containing all {top_k} transactions.
+For EACH transaction, clearly state:
+ - Transaction ID
+ - Transaction Time
+ - Amount
+ - Impact
+ - Relevant Features (V1, V2, etc.)
+Do not filter out any results. Include all {top_k} transactions retrieved regardless of whether they are anomalous.
+CRITICAL: If you use the interpret_fraud_features tool, you MUST pass a SINGLE dictionary containing the V-features for ONE transaction (e.g. {{'V1': 1.2, 'V2': -0.5}}). NEVER pass a list of dictionaries.
+CRITICAL: After running your tools, you MUST analyze the data and generate a clear, human-readable text analysis. NEVER output raw strings like [TOOL_RESULT] or [END_TOOL_RESULT]."""
+
 
 class FraudInspectorGraph:
     def __init__(self, agent: LLMAgent):
@@ -58,21 +74,7 @@ class FraudInspectorGraph:
         if not self.graph:
             await self.build()
 
-        enriched_prompt = (
-            f"{request.prompt}\n\n"
-            f"Instructions:\n"
-            f"When invoking the context_lookup tool, you MUST explicitly pass `top_k={request.top_k}` as an argument rather than relying on its default value.\n"
-            f"You MUST format your final response as a clear, list containing all {request.top_k} transactions.\n"
-            f"For EACH transaction, clearly state:\n"
-            f" - Transaction ID\n"
-            f" - Transaction Time\n"
-            f" - Amount\n"
-            f" - Impact\n"
-            f" - Relevant Features (V1, V2, etc.)\n"
-            f"Do not filter out any results. Include all {request.top_k} transactions retrieved regardless of whether they are anomalous.\n"
-            f"CRITICAL: If you use the interpret_fraud_features tool, you MUST pass a SINGLE dictionary containing the V-features for ONE transaction (e.g. {{'V1': 1.2, 'V2': -0.5}}). NEVER pass a list of dictionaries.\n"
-            f"CRITICAL: After running your tools, you MUST analyze the data and generate a clear, human-readable text analysis. NEVER output raw strings like [TOOL_RESULT] or [END_TOOL_RESULT]."
-        )
+        enriched_prompt = _AGENT_INSTRUCTIONS.format(prompt=request.prompt, top_k=request.top_k)
         initial_state = {"messages": [HumanMessage(content=enriched_prompt)]}
 
         result = await self.graph.ainvoke(initial_state)
