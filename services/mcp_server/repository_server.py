@@ -5,6 +5,7 @@ from mcp.server.fastmcp import FastMCP
 from services.agent.sentence_transformer import SentenceTransformerModel
 from services.tool.rag_tool import RAGQueryEngine
 from shared.config_loader import config_loader
+from shared.logging_config import configure_logging
 
 logger = logging.getLogger(__name__)
 mcp = FastMCP("Repository", port=8003)
@@ -32,4 +33,5 @@ def context_lookup(query: str, top_k: int) -> str:
 
 
 if __name__ == "__main__":
+    configure_logging()
     mcp.run(transport="sse")

@@ -1,11 +1,11 @@
 import pytest
 from unittest.mock import patch, MagicMock
-from services.repository.repository import TransactionRepository
+from services.repository.transaction_canonical_repository import TransactionRepository
 from schemas.transaction import TransactionCanonical
 from datetime import datetime
 
-@patch("services.repository.repository.create_engine")
-@patch("services.repository.repository.config_loader")
+@patch("services.repository.transaction_canonical_repository.create_engine")
+@patch("services.repository.transaction_canonical_repository.config_loader")
 def test_repository_insert_if_not_exists(mock_config_loader, mock_create_engine):
     mock_config = MagicMock()
     mock_config.database.url = "sqlite:///:memory:"

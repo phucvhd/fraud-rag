@@ -4,11 +4,11 @@ import threading
 
 from confluent_kafka import Consumer, KafkaError
 
-from services.repository.repository import TransactionRepository
-from shared.config_loader import config_loader
 from schemas.transaction import TransactionCanonical
+from services.repository.transaction_canonical_repository import TransactionRepository
+from shared.config_loader import config_loader
+from shared.logging_config import configure_logging
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("FraudConsumer")
 
 
@@ -29,7 +29,10 @@ class FraudTransactionConsumer:
             self.repo.insert_if_not_exists(transaction)
             logger.info("Ingested: %s", transaction.transaction_id)
         except Exception as e:
-            logger.error("Failed to handle message: %s", e)
+            logger.error(
+                "Failed to handle message at %s[%s]@%s: %s",
+                msg.topic(), msg.partition(), msg.offset(), e,
+            )
 
     def start(self, stop_event: threading.Event | None = None):
         self.consumer.subscribe([self.cfg.kafka.topic])
@@ -53,5 +56,6 @@ class FraudTransactionConsumer:
 
 
 if __name__ == "__main__":
+    configure_logging()
     consumer = FraudTransactionConsumer()
     consumer.start()

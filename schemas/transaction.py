@@ -13,7 +13,7 @@ class TransactionBase(BaseModel):
 
 class TransactionCanonical(TransactionBase):
     event_timestamp: datetime
-    created_at: datetime = datetime.now()
+    created_at: datetime = Field(default_factory=datetime.now)
 
     @field_validator('event_timestamp', mode='before')
     @classmethod
@@ -27,4 +27,4 @@ class TransactionEmbedding(BaseModel):
     embedding: Optional[List[float]] = None
     embedding_text: str
     embedding_model: str
-    created_at: datetime = datetime.now()
+    created_at: datetime = Field(default_factory=datetime.now)

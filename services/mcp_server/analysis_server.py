@@ -3,6 +3,7 @@ import logging
 from mcp.server.fastmcp import FastMCP
 
 from shared.config_loader import config_loader
+from shared.logging_config import configure_logging
 
 logger = logging.getLogger(__name__)
 mcp = FastMCP("Analysis server", port=8004)
@@ -40,4 +41,5 @@ def interpret_fraud_features(v_features: dict) -> str:
 
 
 if __name__ == "__main__":
+    configure_logging()
     mcp.run(transport="sse")

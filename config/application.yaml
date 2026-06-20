@@ -1,5 +1,5 @@
 database:
-  url: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}"
+  url: "postgresql://user:password@localhost:5432/fraud_db"
   batch_size: 50
 
 kafka:
@@ -15,11 +15,12 @@ llm:
   provider: "ollama"
   base_url: "http://localhost:1234/v1"
   api_key: "ollama"
-  model_name: "llama3"
+  model_name: "llama-3.2-1b-instruct"
 
 dashboard:
-  rag_url: "http://localhost:8002/ask"
+  rag_url: "http://localhost:8001/ask"
   inject_url: "http://localhost:8000/transaction/inject?duration_seconds=1"
+  transactions_url: "http://localhost:8001/transactions/timeseries"
 
 correlation_analysis:
   features:

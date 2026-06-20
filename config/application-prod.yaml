@@ -26,6 +26,7 @@ llm:
 dashboard:
   rag_url: "http://rag-api:8000/ask"
   inject_url: "http://fraud-detection-service:8000/transaction/inject?duration_seconds=1"
+  transactions_url: "http://rag-api:8000/transactions/timeseries"
 
 correlation_analysis:
   features:
