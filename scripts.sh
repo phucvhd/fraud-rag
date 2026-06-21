@@ -2,6 +2,12 @@
 
 export PYTHONPATH=$PYTHONPATH:.
 
+if [ -f .env ]; then
+    set -a
+    source .env
+    set +a
+fi
+
 case "$1" in
     "start")
         python -m services.consumer.consumer &
