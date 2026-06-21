@@ -4,9 +4,12 @@ from pathlib import Path
 from typing import ClassVar, Optional
 
 import yaml
+from dotenv import load_dotenv
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
+
+load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 
 class DatabaseConfig(BaseModel):

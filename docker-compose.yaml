@@ -82,6 +82,7 @@ services:
       - HF_HOME=/app/model_cache
       - APP_ENV=prod
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:8080}
     volumes:
       - ./model_cache:/app/model_cache
     depends_on:
@@ -93,17 +94,19 @@ services:
         condition: service_started
     command: uvicorn services.api.main:app --host 0.0.0.0 --port 8000
 
-  transaction-dashboard:
+  web:
     build:
-      context: .
-      dockerfile: Dockerfile.dashboard
-    container_name: transaction-monitor
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8002}
+        VITE_INJECT_URL: ${VITE_INJECT_URL:-}
+    container_name: fraud-web
     ports:
-      - "8501:8501"
-    environment:
-      - APP_ENV=prod
+      - "8080:80"
     networks:
       - fraud-net
+    depends_on:
+      - rag-api
 
 volumes:
   pgdata:

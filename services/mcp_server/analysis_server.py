@@ -14,10 +14,11 @@ THRESHOLDS = cfg.correlation_analysis.thresholds
 
 
 @mcp.tool()
-def interpret_fraud_features(v_features: dict) -> str:
+def interpret_fraud_features(v_features: dict, is_fraud: bool | None = None) -> str:
     """Use this tool ONLY AFTER you have obtained specific numerical 'V' features (V1, V2, etc.)
     for a transaction. Performs a mathematical analysis of the features against a correlation map
-    to determine if they represent a fraud risk.
+    to determine if they represent a fraud risk. Optionally pass the transaction's real `is_fraud`
+    database label (if known) so it is reported alongside the heuristic verdict.
     DO NOT use this tool to search for transactions or filter by amount;
     it only interprets raw data already in your possession."""
     significant_features = []
@@ -36,8 +37,14 @@ def interpret_fraud_features(v_features: dict) -> str:
                     f"{feature} (Value: {value:.2f}, Corr: {corr:.2f}) -> {impact}"
                 )
 
-    return "Detected Anomalies: " + " | ".join(
-        significant_features) if significant_features else "No anomalies detected."
+    heuristic_result = "Detected Anomalies: " + " | ".join(
+        significant_features) if significant_features else "No anomalies detected by heuristic."
+
+    if is_fraud is None:
+        return heuristic_result
+
+    ground_truth = "FRAUD" if is_fraud else "Not flagged as fraud"
+    return f"{heuristic_result} | Ground Truth (DB label): {ground_truth}"
 
 
 if __name__ == "__main__":

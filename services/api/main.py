@@ -1,10 +1,12 @@
 import logging
+import os
 import threading
 from contextlib import asynccontextmanager
 from datetime import datetime
 
 import uvicorn
 from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi.middleware.cors import CORSMiddleware
 
 from schemas.dto import QueryRequest, QueryResponse, TimeseriesBucket, TimeseriesResponse
 from services.agent.agent import LLMAgent
@@ -43,6 +45,14 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+
+cors_origins = [origin.strip() for origin in os.environ.get("CORS_ORIGINS", "*").split(",")]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=cors_origins,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/health")

@@ -31,6 +31,7 @@ class EmbeddingWorker:
                     vector, txt = self.processor.create_embedding(
                         job["amount"],
                         job["features"],
+                        job["is_fraud"],
                     )
                     self.repo.save(TransactionEmbedding(
                         transaction_id=job["transaction_id"],

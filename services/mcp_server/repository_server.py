@@ -17,10 +17,11 @@ rag_engine = RAGQueryEngine(sentence_transformer_model)
 
 @mcp.tool()
 def context_lookup(query: str, top_k: int) -> str:
-    """Search for and retrieve specific transaction data, historical records, or contextual
-    information from the database using natural language queries.
-    This is the PRIMARY tool to use when you need to find transactions
-    (e.g., 'find transactions over 1000 EUR').
+    """Semantic search for transactions by natural language similarity
+    (e.g., 'find transactions over 1000 EUR'). Returns a JSON list of transactions
+    with their amount, time, is_fraud label and raw features.
+    Do NOT use this for anomaly/fraud/suspicious-transaction questions — use
+    find_known_fraud instead, since this tool does not filter by the real fraud label.
     Always specify 'top_k' to define how many results to return."""
     try:
         logger.info("Start retrieving context")
@@ -29,6 +30,23 @@ def context_lookup(query: str, top_k: int) -> str:
         return context
     except Exception as e:
         logger.error("Failed to retrieve context: %s", e)
+        raise
+
+
+@mcp.tool()
+def find_known_fraud(top_k: int) -> str:
+    """Use this tool when the user asks for anomalies, fraud cases, or suspicious
+    transactions. Returns the most recent transactions confirmed as fraudulent
+    (is_fraud = true) directly from the database as a JSON list, ordered by recency.
+    This is ground truth, not a similarity search.
+    Always specify 'top_k' to define how many results to return."""
+    try:
+        logger.info("Start retrieving known fraud transactions")
+        context = rag_engine.fraud_lookup(top_k)
+        logger.info("Retrieved known fraud transactions successfully")
+        return context
+    except Exception as e:
+        logger.error("Failed to retrieve known fraud transactions: %s", e)
         raise
 
 
