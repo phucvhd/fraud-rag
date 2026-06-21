@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { ChatEntry } from "../types";
+import Markdown from "./Markdown";
 
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -33,7 +34,7 @@ export default function ChatMessage({ entry }: { entry: ChatEntry }) {
         <span className="eyebrow">
           Agent reply{entry.topK ? ` · top_k ${entry.topK}` : ""} · {formatTime(entry.timestamp)}
         </span>
-        <p className="entry__text">{entry.content}</p>
+        <Markdown content={entry.content} />
         {entry.raw !== undefined && (
           <>
             <button
