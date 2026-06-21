@@ -1,0 +1,261 @@
+.agent-view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.agent-view__transcript {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.agent-view__empty {
+  margin: auto 0;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.agent-view__empty p {
+  margin: 0;
+  color: var(--ink-soft);
+}
+
+.agent-view__example {
+  align-self: flex-start;
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  font-style: italic;
+  color: var(--ink-soft);
+  text-align: left;
+}
+
+.agent-view__example:hover {
+  border-color: var(--line-strong);
+  color: var(--ink);
+}
+
+/* Plain ledger entry — user prompts */
+.entry {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  animation: rise var(--motion-base) ease-out;
+}
+
+.entry__text {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.entry--error .entry__text {
+  color: var(--alert);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Report slip — assistant replies, the signature element */
+.report-slip {
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  animation: rise var(--motion-base) ease-out;
+}
+
+.report-slip__perforation {
+  height: 9px;
+  background-color: var(--ink-faint);
+  background-image: radial-gradient(circle, var(--paper-raised) 3px, transparent 3.2px);
+  background-size: 14px 9px;
+  background-repeat: repeat-x;
+  background-position: 4px center;
+}
+
+.report-slip__body {
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.report-slip__body .entry__text {
+  color: var(--ink);
+}
+
+.report-slip--pending .report-slip__body {
+  padding-bottom: var(--space-5);
+}
+
+.agent-view__typing {
+  display: flex;
+  gap: 5px;
+  margin-top: var(--space-1);
+}
+
+.agent-view__typing span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--ink-faint);
+  animation: blink 1.2s ease-in-out infinite;
+}
+
+.agent-view__typing span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.agent-view__typing span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes blink {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+
+.report-slip__trace-toggle {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--verified);
+}
+
+.report-slip__trace {
+  margin: 0;
+  max-height: 220px;
+  overflow: auto;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  font-size: var(--text-2xs);
+  color: var(--ink-soft);
+}
+
+/* Composer */
+.composer {
+  border-top: 1px solid var(--line);
+  padding: var(--space-4) var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  background: var(--paper);
+}
+
+.composer__controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.composer__topk {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.composer__topk input {
+  width: 52px;
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+.composer__clear {
+  background: none;
+  border: none;
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.composer__clear:disabled {
+  opacity: 0.4;
+  cursor: default;
+  text-decoration: none;
+}
+
+.composer__clear:not(:disabled):hover {
+  color: var(--alert);
+}
+
+.composer__row {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.composer__input {
+  flex: 1;
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  font-size: var(--text-base);
+}
+
+.composer__input:focus-visible {
+  border-color: var(--verified);
+}
+
+.composer__send {
+  background: var(--ink);
+  color: var(--paper);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0 var(--space-5);
+  font-weight: 600;
+  transition: opacity var(--motion-fast);
+}
+
+.composer__send:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.composer__send:not(:disabled):hover {
+  opacity: 0.85;
+}
+
+@media (max-width: 640px) {
+  .agent-view__transcript {
+    padding: var(--space-4);
+  }
+
+  .composer {
+    padding: var(--space-3) var(--space-4);
+  }
+}

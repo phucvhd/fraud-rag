@@ -8,7 +8,7 @@ asynchronously embedded into `pgvector` for semantic retrieval. An LLM agent
 (LangGraph + MCP tools) answers analyst questions like *"any anomalous
 transactions over 1000 EUR in the last hour?"* by pulling similar past
 transactions from the vector store and scoring their features against a
-correlation model. A Streamlit dashboard exposes both a live transaction
+correlation model. A React dashboard exposes both a live transaction
 monitor and a chat interface to the agent.
 
 ## Architecture
@@ -42,7 +42,7 @@ monitor and a chat interface to the agent.
 └──────────────┘           └─────────────────┘           └────────┬────────┘
                                                                     │
                                                           ┌─────────▼─────────┐
-                                                          │ Streamlit dashboard│
+                                                          │   React dashboard  │
                                                           └────────────────────┘
 ```
 
@@ -63,7 +63,7 @@ those tools to a chat model and lets it decide when to call them.
 | `services/mcp_server/analysis_server.py` | Exposes `interpret_fraud_features`, which scores V-features against a precomputed correlation map (`config/*.yaml: correlation_analysis`) |
 | `services/agent/` | LLM client (`agent.py`) + LangGraph workflow that wires the chat model to both MCP tool servers (`graph.py`) |
 | `services/api/main.py` | FastAPI app: `/ask` (agent Q&A), `/transactions/timeseries` (dashboard data), `/health`. Also bootstraps the consumer and embedder as background threads in dev/single-process mode |
-| `services/streamlit/app.py` | Dashboard: live transaction chart + chat UI against `/ask` |
+| `frontend/` | React (Vite) dashboard: live transaction chart + chat UI against `/ask` |
 | `database/model.py`, `alembic/` | SQLAlchemy models and migrations for `transactions` / `transaction_embeddings` |
 | `shared/config_loader.py` | Loads `config/application*.yaml` based on `APP_ENV`, expanding `${VAR}` placeholders from the environment |
 
@@ -97,7 +97,7 @@ docker compose up --build
 ```
 
 This brings up Postgres (with pgvector), Ollama (pulls `llama3` on first
-start), both MCP servers, the RAG API, and the Streamlit dashboard. Run
+start), both MCP servers, the RAG API, and the React dashboard. Run
 migrations against the running database with:
 
 ```bash
@@ -107,7 +107,7 @@ alembic upgrade head
 | Service | URL |
 |---|---|
 | RAG API | http://localhost:8002 |
-| Dashboard | http://localhost:8501 |
+| Dashboard | http://localhost:8080 |
 | mcp-repository | http://localhost:8003/sse |
 | mcp-analysis | http://localhost:8004/sse |
 
@@ -127,11 +127,26 @@ python -m services.consumer.consumer
 python -m services.embedder.worker
 python -m services.mcp_server.repository_server
 python -m services.mcp_server.analysis_server
-streamlit run services/streamlit/app.py
 ```
 
 `config/application.yaml` (loaded by default, i.e. when `APP_ENV` is unset)
 points everything at `localhost`, matching this workflow.
+
+### Frontend (dashboard)
+
+```bash
+cd frontend
+npm install
+cp .env.example .env.local   # set VITE_API_BASE_URL if the API isn't on :8000
+npm run dev                  # http://localhost:5173
+```
+
+The dashboard is a Vite + React + TypeScript app (`frontend/`) with two
+views: **Agent**, a chat UI against `POST /ask`, and **Monitor**, the live
+transaction chart against `GET /transactions/timeseries` (plus the inject
+control, if `VITE_INJECT_URL` is set). It talks to the API directly from the
+browser, so the API needs `CORS_ORIGINS` to include the dashboard's origin
+(see `services/api/main.py`).
 
 ## Configuration
 
