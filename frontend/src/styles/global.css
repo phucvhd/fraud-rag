@@ -13,12 +13,32 @@ body {
 }
 
 body {
-  background: var(--paper);
-  color: var(--ink);
-  font-family: var(--font-body);
-  font-size: var(--text-base);
-  line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-term);
+  font-size: var(--text-term);
+  line-height: 1.35;
+  /* Keep pixel fonts crisp — no smoothing softening the edges. */
+  -webkit-font-smoothing: none;
+  font-smooth: never;
+}
+
+/* Signature: faint CRT scanlines + vignette over the whole console. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0) 0,
+      rgba(0, 0, 0, 0) 2px,
+      rgba(0, 0, 0, 0.16) 3px,
+      rgba(0, 0, 0, 0.16) 4px
+    ),
+    radial-gradient(ellipse at center, transparent 60%, rgba(0, 0, 0, 0.35) 100%);
 }
 
 #root {
@@ -39,20 +59,39 @@ button {
 }
 
 :focus-visible {
-  outline: 2px solid var(--verified);
+  outline: var(--px) solid var(--amber);
   outline-offset: 2px;
 }
 
+/* Pixel HUD label */
 .eyebrow {
-  font-family: var(--font-mono);
+  font-family: var(--font-pixel);
   font-size: var(--text-2xs);
-  letter-spacing: 0.08em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--ink-soft);
+  color: var(--fg-dim);
+  line-height: 1.6;
 }
 
-.mono {
-  font-family: var(--font-mono);
+.term {
+  font-family: var(--font-term);
+}
+
+/* Chunky retro scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border: 2px solid var(--bg);
+}
+*::-webkit-scrollbar-track {
+  background: var(--bg-inset);
 }
 
 .visually-hidden {
@@ -69,5 +108,9 @@ button {
   *::after {
     animation-duration: 0.001ms !important;
     transition-duration: 0.001ms !important;
+  }
+  /* Drop the scanline shimmer entirely for reduced-motion users. */
+  body::before {
+    background: radial-gradient(ellipse at center, transparent 60%, rgba(0, 0, 0, 0.35) 100%);
   }
 }

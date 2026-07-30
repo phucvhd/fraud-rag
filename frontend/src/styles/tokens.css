@@ -1,29 +1,40 @@
 :root {
-  /* Color — "evidence ledger": cool paper, ink, brick alert, verified teal */
-  --paper: #eef0ec;
-  --paper-raised: #ffffff;
-  --ink: #15201c;
-  --ink-soft: #51594f;
-  --ink-faint: #8b9088;
-  --line: #cfd3c9;
-  --line-strong: #aab0a3;
-  --alert: #a23a2e;
-  --alert-soft: #e8d9d4;
-  --verified: #2f6e5c;
-  --verified-soft: #d9e4dd;
+  color-scheme: dark;
+
+  /* Color — "CRT console": phosphor-dark ground, multi-hue arcade signal colors.
+     Hues are semantic: green = clean, red = fraud, cyan = action, amber = warn. */
+  --bg: #0d0b1a;            /* deep indigo-black CRT ground */
+  --bg-panel: #171334;      /* raised panel */
+  --bg-inset: #08060f;      /* recessed well (inputs, code) */
+  --bg-hover: #211c46;
+
+  --fg: #e9e4ff;            /* phosphor lavender-white */
+  --fg-dim: #9a90d6;
+  --fg-faint: #5f5892;
+
+  --green: #4bf5a0;         /* normal / verified */
+  --green-dim: #163a2c;
+  --red: #ff5277;           /* fraud / alert */
+  --red-dim: #3a1420;
+  --cyan: #35e0e0;          /* primary action / brand */
+  --cyan-dim: #0f3540;
+  --amber: #ffd23f;         /* highlight / warning */
+  --magenta: #c86bff;       /* secondary accent */
+
+  --line: #2c2660;          /* panel borders */
+  --line-strong: #4a3fa0;
 
   /* Type */
-  --font-display: "Big Shoulders", "Arial Narrow", sans-serif;
-  --font-body: "IBM Plex Sans", system-ui, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --font-pixel: "Press Start 2P", "Courier New", monospace; /* HUD / accents, used sparingly */
+  --font-term: "VT323", ui-monospace, "Courier New", monospace; /* readable CRT body */
 
-  --text-2xs: 0.6875rem;
-  --text-xs: 0.75rem;
-  --text-sm: 0.8125rem;
-  --text-base: 0.9375rem;
-  --text-md: 1.125rem;
-  --text-lg: 1.5rem;
-  --text-xl: 2.25rem;
+  --text-2xs: 0.5rem;   /* pixel labels (Press Start 2P runs large) */
+  --text-xs: 0.625rem;
+  --text-sm: 0.75rem;
+  --text-term: 1.125rem; /* VT323 body — set large; the face is small per em */
+  --text-term-lg: 1.375rem;
+  --text-hud: 1rem;
+  --text-hud-lg: 1.75rem;
 
   /* Layout */
   --space-1: 4px;
@@ -34,25 +45,12 @@
   --space-6: 32px;
   --space-7: 48px;
 
-  --radius-sm: 2px;
-  --radius-md: 4px;
+  /* 8-bit look: zero radius, hard offset "pixel" shadows (no blur). */
+  --radius: 0px;
+  --px: 3px;                                   /* base pixel unit for borders */
+  --shadow-pixel: 4px 4px 0 0 var(--bg-inset);
+  --shadow-pixel-cyan: 4px 4px 0 0 var(--cyan-dim);
 
-  --motion-fast: 120ms;
-  --motion-base: 180ms;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --paper: #161c18;
-    --paper-raised: #1d241f;
-    --ink: #eaeee8;
-    --ink-soft: #aab4a5;
-    --ink-faint: #6e766a;
-    --line: #343d36;
-    --line-strong: #46504a;
-    --alert: #d76a59;
-    --alert-soft: #3a2722;
-    --verified: #6cb89e;
-    --verified-soft: #1f3530;
-  }
+  --motion-fast: 90ms;
+  --motion-base: 160ms;
 }

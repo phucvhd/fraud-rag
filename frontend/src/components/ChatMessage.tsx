@@ -8,12 +8,23 @@ function formatTime(iso: string): string {
 
 export default function ChatMessage({ entry }: { entry: ChatEntry }) {
   const [traceOpen, setTraceOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  async function copyAnswer() {
+    try {
+      await navigator.clipboard.writeText(entry.content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* clipboard blocked — nothing to do */
+    }
+  }
 
   if (entry.role === "user") {
     return (
       <div className="entry entry--user">
-        <span className="eyebrow">You · {formatTime(entry.timestamp)}</span>
-        <p className="entry__text">{entry.content}</p>
+        <span className="eyebrow">YOU · {formatTime(entry.timestamp)}</span>
+        <p className="entry__text">&gt; {entry.content}</p>
       </div>
     );
   }
@@ -21,7 +32,7 @@ export default function ChatMessage({ entry }: { entry: ChatEntry }) {
   if (entry.role === "error") {
     return (
       <div className="entry entry--error">
-        <span className="eyebrow">Request failed · {formatTime(entry.timestamp)}</span>
+        <span className="eyebrow">✕ REQUEST FAILED · {formatTime(entry.timestamp)}</span>
         <p className="entry__text">{entry.content}</p>
       </div>
     );
@@ -29,11 +40,18 @@ export default function ChatMessage({ entry }: { entry: ChatEntry }) {
 
   return (
     <div className="report-slip">
-      <div className="report-slip__perforation" aria-hidden="true" />
+      <div className="report-slip__tab" aria-hidden="true">
+        AGENT
+      </div>
       <div className="report-slip__body">
-        <span className="eyebrow">
-          Agent reply{entry.topK ? ` · top_k ${entry.topK}` : ""} · {formatTime(entry.timestamp)}
-        </span>
+        <div className="report-slip__head">
+          <span className="eyebrow">
+            REPLY{entry.topK ? ` · ${entry.topK} cases` : ""} · {formatTime(entry.timestamp)}
+          </span>
+          <button type="button" className="report-slip__copy" onClick={copyAnswer}>
+            {copied ? "✓ Copied" : "Copy"}
+          </button>
+        </div>
         <Markdown content={entry.content} />
         {entry.raw !== undefined && (
           <>
@@ -45,7 +63,7 @@ export default function ChatMessage({ entry }: { entry: ChatEntry }) {
             >
               {traceOpen ? "▾ Hide trace" : "▸ View trace"}
             </button>
-            {traceOpen && <pre className="report-slip__trace mono">{JSON.stringify(entry.raw, null, 2)}</pre>}
+            {traceOpen && <pre className="report-slip__trace term">{JSON.stringify(entry.raw, null, 2)}</pre>}
           </>
         )}
       </div>
