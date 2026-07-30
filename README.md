@@ -96,8 +96,10 @@ cp .env.example .env   # fill in POSTGRES_* and OPENAI_API_KEY if needed
 docker compose up --build
 ```
 
-This brings up Postgres (with pgvector), Ollama (pulls `llama3` on first
-start), both MCP servers, the RAG API, and the React dashboard. Run
+This brings up Postgres (with pgvector), Kafka + Zookeeper (the broker the
+consumer reads from), Ollama (pulls `llama3` on first start), both MCP servers,
+the RAG API, and the React dashboard. The `fraud-net` network is created by
+Compose automatically — no manual `docker network create` is needed. Run
 migrations against the running database with:
 
 ```bash
@@ -191,5 +193,9 @@ applies to migrations too.
 ## Tests
 
 ```bash
-pytest test/
+PYTHONPATH=. pytest test/
 ```
+
+GitHub Actions runs the full test suite (`pytest test/`) on every push to
+`main`, `feature/**`, or `hotfix/**`, and on pull requests to `main`. See
+`.github/workflows/ci.yml`.

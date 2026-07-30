@@ -1,5 +1,3 @@
-import os
-
 from services.agent.sentence_transformer import SentenceTransformerModel
 from shared.config_loader import config_loader
 
