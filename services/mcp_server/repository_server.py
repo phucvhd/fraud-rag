@@ -50,6 +50,42 @@ def find_known_fraud(top_k: int) -> str:
         raise
 
 
+@mcp.tool()
+def query_transactions(
+    top_k: int,
+    amount_min: float | None = None,
+    amount_max: float | None = None,
+    start_time: str | None = None,
+    end_time: str | None = None,
+    is_fraud: bool | None = None,
+    query: str | None = None,
+) -> str:
+    """Use this tool whenever the question involves an EXACT filter: an amount
+    threshold (e.g. 'over 1000 EUR'), a time window (e.g. 'in the last hour'), or
+    a fraud flag. It applies real SQL filters instead of fuzzy similarity, so it
+    is far more accurate than context_lookup for numeric/temporal queries.
+    Pass ISO-8601 timestamps for start_time/end_time (inclusive start, exclusive end).
+    'query' is OPTIONAL — provide it only to rank the filtered rows by semantic
+    similarity to a description. Always specify 'top_k'. Returns a JSON list of
+    transactions with amount, time, is_fraud label and raw features."""
+    try:
+        logger.info("Start structured transaction query")
+        context = rag_engine.query_transactions(
+            top_k=top_k,
+            amount_min=amount_min,
+            amount_max=amount_max,
+            start_time=start_time,
+            end_time=end_time,
+            is_fraud=is_fraud,
+            query=query,
+        )
+        logger.info("Structured transaction query completed")
+        return context
+    except Exception as e:
+        logger.error("Failed to run structured transaction query: %s", e)
+        return "The transaction query failed. Try adjusting the filters or narrowing the range."
+
+
 if __name__ == "__main__":
     configure_logging()
     mcp.run(transport="sse")

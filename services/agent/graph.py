@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+from datetime import datetime
 
 from langgraph.graph import StateGraph, START
 from langgraph.graph.state import CompiledStateGraph
@@ -15,17 +16,26 @@ from shared.config_loader import config_loader
 
 logger = logging.getLogger(__name__)
 
-_LOOKUP_TOOLS = {"context_lookup", "find_known_fraud"}
+_LOOKUP_TOOLS = {"context_lookup", "find_known_fraud", "query_transactions"}
 _ANALYSIS_TOOL = "interpret_fraud_features"
 
 _AGENT_INSTRUCTIONS = """\
 {prompt}
 
+Context:
+The current time is {now} (ISO-8601, same clock the database timestamps use). Resolve every
+relative time expression in the question ("in the last hour", "today", "since noon") against
+this value and pass the result as start_time/end_time. Never guess the current date.
+
 Instructions:
-Use the find_known_fraud tool (not context_lookup) when the user asks about anomalies, fraud, or
-suspicious transactions — it returns transactions confirmed as fraudulent in the database.
-Use context_lookup only for generic searches (e.g. by amount or free-text description).
-When invoking either lookup tool, you MUST explicitly pass `top_k={top_k}` as an argument rather than relying on its default value.
+Pick ONE lookup tool:
+- query_transactions — when the question has an EXACT filter: an amount threshold, a time window,
+  or a fraud flag (e.g. "over 1000 EUR in the last hour"). Pass amount_min/amount_max, start_time/end_time
+  (ISO-8601), and/or is_fraud. This is the accurate path for numeric/temporal questions.
+- find_known_fraud — when the user asks broadly for recent anomalies/fraud with no specific filter;
+  returns transactions confirmed fraudulent in the database.
+- context_lookup — only for fuzzy, free-text descriptions with no numeric/time filter.
+When invoking any lookup tool, you MUST explicitly pass `top_k={top_k}` rather than relying on its default.
 A per-transaction fraud analysis (heuristic verdict and the real database label) is automatically
 attached to your tool results — you do NOT need to call interpret_fraud_features yourself.
 You MUST format your final response as a clear list containing all {top_k} transactions returned by the lookup tool.
@@ -119,7 +129,13 @@ class FraudInspectorGraph:
         if not self.graph:
             await self.build()
 
-        enriched_prompt = _AGENT_INSTRUCTIONS.format(prompt=request.prompt, top_k=request.top_k)
+        # Naive local time — matches the TIMESTAMP values the producer writes,
+        # so relative windows the model derives line up with event_timestamp.
+        enriched_prompt = _AGENT_INSTRUCTIONS.format(
+            prompt=request.prompt,
+            top_k=request.top_k,
+            now=datetime.now().isoformat(timespec="seconds"),
+        )
         initial_state = {"messages": [HumanMessage(content=enriched_prompt)]}
 
         result = await self.graph.ainvoke(initial_state)
