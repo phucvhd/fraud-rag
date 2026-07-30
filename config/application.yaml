@@ -18,9 +18,9 @@ llm:
   model_name: "llama-3.2-1b-instruct"
 
 dashboard:
-  rag_url: "http://localhost:8001/ask"
+  rag_url: "http://localhost:8000/ask"
   inject_url: "http://localhost:8000/transaction/inject?duration_seconds=1"
-  transactions_url: "http://localhost:8001/transactions/timeseries"
+  transactions_url: "http://localhost:8000/transactions/timeseries"
 
 correlation_analysis:
   features:

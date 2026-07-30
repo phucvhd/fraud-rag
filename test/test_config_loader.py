@@ -33,6 +33,17 @@ llm:
 dashboard:
   rag_url: http://localhost:8000
   inject_url: http://localhost:8001
+  transactions_url: http://localhost:8002
+correlation_analysis:
+  features:
+    V1: -0.1
+  thresholds:
+    high: 0.5
+mcp_servers:
+  analysis:
+    url: http://localhost:9000/sse
+  repository:
+    url: http://localhost:9001/sse
 """)
 def test_config_loader_load_success(mock_file, mock_exists):
     mock_exists.return_value = True

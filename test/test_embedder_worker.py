@@ -1,57 +1,53 @@
-import pytest
+import threading
 from unittest.mock import patch, MagicMock
+
 from services.embedder.worker import EmbeddingWorker
 
-@patch("services.embedder.worker.create_engine")
-@patch("services.embedder.worker.config_loader")
+
 @patch("services.embedder.worker.EmbeddingProcessor")
-def test_embedding_worker_init(mock_processor, mock_config_loader, mock_create_engine):
-    mock_config = MagicMock()
-    mock_config.database.url = "sqlite:///:memory:"
-    mock_config_loader.load.return_value = mock_config
-
-    worker = EmbeddingWorker()
-
-    mock_create_engine.assert_called_once_with("sqlite:///:memory:")
-    assert worker.processor == mock_processor.return_value
-
-@patch("services.embedder.worker.select")
-@patch("services.embedder.worker.create_engine")
+@patch("services.embedder.worker.TransactionEmbeddingRepository")
 @patch("services.embedder.worker.config_loader")
+def test_embedding_worker_init(mock_config_loader, mock_repo, mock_processor):
+    mock_config_loader.load.return_value = MagicMock()
+    model = MagicMock()
+
+    worker = EmbeddingWorker(model)
+
+    assert worker.repo is mock_repo.return_value
+    assert worker.processor is mock_processor.return_value
+    mock_processor.assert_called_once_with(model)
+
+
 @patch("services.embedder.worker.EmbeddingProcessor")
-def test_embedding_worker_fetch_pending(mock_processor, mock_config_loader, mock_create_engine, mock_select):
-    mock_config = MagicMock()
-    mock_config.database.batch_size = 10
-    mock_config_loader.load.return_value = mock_config
-
-    mock_engine = MagicMock()
-    mock_conn = MagicMock()
-    mock_engine.connect.return_value.__enter__.return_value = mock_conn
-    mock_create_engine.return_value = mock_engine
-
-    mock_records = [{"transaction_id": "1", "amount": 100, "features": {}}]
-    mock_conn.execute.return_value.mappings.return_value.all.return_value = mock_records
-
-    worker = EmbeddingWorker()
-    jobs = worker._fetch_pending()
-
-    assert jobs == mock_records
-    mock_conn.execute.assert_called_once()
-
-@patch("services.embedder.worker.insert")
-@patch("services.embedder.worker.create_engine")
+@patch("services.embedder.worker.TransactionEmbeddingRepository")
 @patch("services.embedder.worker.config_loader")
-@patch("services.embedder.worker.EmbeddingProcessor")
-def test_embedding_worker_save_vector(mock_processor, mock_config_loader, mock_create_engine, mock_insert):
-    mock_engine = MagicMock()
-    mock_conn = MagicMock()
-    mock_engine.begin.return_value.__enter__.return_value = mock_conn
-    mock_create_engine.return_value = mock_engine
+def test_embedding_worker_processes_and_saves(mock_config_loader, mock_repo, mock_processor):
+    cfg = MagicMock()
+    cfg.database.batch_size = 10
+    cfg.embedding.model_name = "test-model"
+    mock_config_loader.load.return_value = cfg
 
-    mock_stmt = MagicMock()
-    mock_insert.return_value.values.return_value.on_conflict_do_nothing.return_value = mock_stmt
+    job = {
+        "transaction_id": "11111111-1111-1111-1111-111111111111",
+        "amount": 100.0,
+        "features": {"V1": 0.5},
+        "is_fraud": False,
+    }
+    repo = mock_repo.return_value
+    repo.fetch_pending.return_value = [job]
+    mock_processor.return_value.create_embedding.return_value = ([0.1, 0.2], "embedding text")
 
-    worker = EmbeddingWorker()
-    worker._save_vector("t_id", [0.1], "text")
+    stop_event = threading.Event()
+    # Break the loop right after the first job is saved.
+    repo.save.side_effect = lambda embedding: stop_event.set()
 
-    mock_conn.execute.assert_called_once_with(mock_stmt)
+    worker = EmbeddingWorker(MagicMock())
+    worker.start(stop_event)
+
+    mock_processor.return_value.create_embedding.assert_called_once_with(100.0, {"V1": 0.5}, False)
+    repo.save.assert_called_once()
+    saved = repo.save.call_args.args[0]
+    assert str(saved.transaction_id) == job["transaction_id"]
+    assert saved.embedding == [0.1, 0.2]
+    assert saved.embedding_text == "embedding text"
+    assert saved.embedding_model == "test-model"
