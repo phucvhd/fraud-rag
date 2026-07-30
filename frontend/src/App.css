@@ -2,9 +2,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
   padding: var(--space-3) var(--space-5);
-  border-bottom: 1px solid var(--line);
-  background: var(--paper);
+  border-bottom: var(--px) solid var(--line-strong);
+  background: var(--bg-panel);
   position: sticky;
   top: 0;
   z-index: 10;
@@ -13,63 +15,95 @@
 .topbar__brand {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-3);
 }
 
-.topbar__dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--verified);
-  box-shadow: 0 0 0 3px var(--verified-soft);
-  animation: pulse 2.4s ease-in-out infinite;
+.topbar__cursor {
+  width: 12px;
+  height: 18px;
+  background: var(--cyan);
+  animation: cursor-blink 1s steps(1) infinite;
 }
 
-@keyframes pulse {
+@keyframes cursor-blink {
   0%,
-  100% {
+  50% {
     opacity: 1;
   }
-  50% {
-    opacity: 0.45;
+  50.01%,
+  100% {
+    opacity: 0;
   }
 }
 
 .topbar__wordmark {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: var(--text-lg);
-  letter-spacing: 0.01em;
-  text-transform: uppercase;
+  font-family: var(--font-pixel);
+  font-size: var(--text-hud);
+  color: var(--fg);
+  letter-spacing: 0.02em;
+  text-shadow: 2px 2px 0 var(--cyan-dim);
+}
+
+.topbar__live {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-pixel);
+  font-size: var(--text-2xs);
+  color: var(--green);
+  border: var(--px) solid var(--green-dim);
+  padding: var(--space-1) var(--space-2);
+}
+
+.topbar__live-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--green);
+  box-shadow: 0 0 6px var(--green);
+  animation: cursor-blink 1.6s steps(1) infinite;
 }
 
 .topbar__nav {
   display: flex;
-  gap: var(--space-1);
+  gap: var(--space-2);
 }
 
 .topbar__tab {
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  background: transparent;
-  border: 1px solid var(--line);
-  color: var(--ink-soft);
-  padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius-sm);
-  transition: border-color var(--motion-fast), color var(--motion-fast), background var(--motion-fast);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-pixel);
+  font-size: var(--text-2xs);
+  background: var(--bg-inset);
+  border: var(--px) solid var(--line);
+  color: var(--fg-dim);
+  padding: var(--space-2) var(--space-3);
+  transition: color var(--motion-fast), border-color var(--motion-fast), background var(--motion-fast);
+}
+
+.topbar__tab-arrow {
+  color: var(--cyan);
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: opacity var(--motion-fast), transform var(--motion-fast);
+  font-size: 0.9em;
 }
 
 .topbar__tab:hover {
+  color: var(--fg);
   border-color: var(--line-strong);
-  color: var(--ink);
 }
 
 .topbar__tab.is-active {
-  background: var(--ink);
-  border-color: var(--ink);
-  color: var(--paper);
+  color: var(--bg);
+  background: var(--cyan);
+  border-color: var(--cyan);
+}
+
+.topbar__tab.is-active .topbar__tab-arrow {
+  color: var(--bg);
+  opacity: 1;
+  transform: translateX(0);
 }
 
 .app-main {
@@ -77,9 +111,13 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  max-width: 920px;
+  max-width: 960px;
   width: 100%;
   margin: 0 auto;
+  border-left: var(--px) solid var(--line);
+  border-right: var(--px) solid var(--line);
+  background:
+    linear-gradient(var(--bg), var(--bg));
 }
 
 @media (max-width: 640px) {
@@ -88,6 +126,11 @@
   }
 
   .topbar__wordmark {
-    font-size: var(--text-md);
+    font-size: var(--text-sm);
+  }
+
+  .app-main {
+    border-left: none;
+    border-right: none;
   }
 }

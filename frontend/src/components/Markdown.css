@@ -2,6 +2,8 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  font-size: var(--text-term-lg);
+  line-height: 1.35;
 }
 
 .markdown-body > *:first-child {
@@ -10,40 +12,40 @@
 
 .markdown-body p {
   margin: 0;
-  line-height: 1.55;
 }
 
 .markdown-body strong {
-  font-weight: 600;
-  color: var(--ink);
+  font-weight: 400;
+  color: var(--amber);
 }
 
 .markdown-body em {
-  color: var(--ink-soft);
+  color: var(--fg-dim);
+  font-style: normal;
+  text-decoration: underline;
+  text-decoration-color: var(--line-strong);
 }
 
 .md-heading {
   margin: var(--space-2) 0 0;
-  padding-top: var(--space-2);
-  border-top: 1px solid var(--line);
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  font-weight: 500;
-  letter-spacing: 0.04em;
+  padding: var(--space-1) var(--space-2);
+  background: var(--bg-inset);
+  border-left: var(--px) solid var(--cyan);
+  font-family: var(--font-pixel);
+  font-size: var(--text-2xs);
+  letter-spacing: 0.02em;
   text-transform: uppercase;
-  color: var(--ink-soft);
+  color: var(--cyan);
 }
 
 .markdown-body > .md-heading:first-child {
   margin-top: 0;
-  padding-top: 0;
-  border-top: none;
 }
 
 .markdown-body ul,
 .markdown-body ol {
   margin: 0;
-  padding-left: 1.1em;
+  padding-left: 1.2em;
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
@@ -56,43 +58,39 @@
 
 .markdown-body ul > li {
   position: relative;
-  padding-left: 1.1em;
+  padding-left: 1.4em;
 }
 
 .markdown-body ul > li::before {
-  content: "—";
+  content: "\25AA";
   position: absolute;
   left: 0;
-  color: var(--ink-faint);
+  color: var(--cyan);
 }
 
 .markdown-body ol > li::marker {
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  color: var(--ink-faint);
+  font-family: var(--font-pixel);
+  font-size: var(--text-2xs);
+  color: var(--amber);
 }
 
 .markdown-body li > p {
   display: inline;
 }
 
-.markdown-body li + li {
-  margin-top: 0;
-}
-
 .markdown-body code {
-  background: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  padding: 1px 5px;
-  font-size: 0.85em;
+  background: var(--bg-inset);
+  border: var(--px) solid var(--line);
+  padding: 0 5px;
+  color: var(--green);
+  font-family: var(--font-term);
+  font-size: 0.95em;
 }
 
 .markdown-body pre {
   margin: 0;
-  background: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
+  background: var(--bg-inset);
+  border: var(--px) solid var(--line);
   padding: var(--space-3);
   overflow-x: auto;
 }
@@ -100,15 +98,16 @@
 .markdown-body pre code {
   border: none;
   padding: 0;
+  color: var(--fg);
 }
 
 .markdown-body a {
-  color: var(--verified);
+  color: var(--cyan);
   text-decoration-color: var(--line-strong);
 }
 
 .md-rule {
   border: none;
-  border-top: 1px solid var(--line);
+  border-top: var(--px) dashed var(--line-strong);
   margin: var(--space-2) 0;
 }
