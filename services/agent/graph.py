@@ -59,6 +59,38 @@ Do not filter out any results. Include all {top_k} transactions retrieved regard
 CRITICAL: After reviewing the data, you MUST generate a clear, human-readable text analysis. NEVER output raw JSON or strings like [TOOL_RESULT] or [END_TOOL_RESULT]."""
 
 
+def _parse_lookup_payload(content) -> list | None:
+    """Normalise a lookup tool's output into the list of transactions.
+
+    The tool result `content` is either a plain JSON string or a list of content
+    blocks (`[{"type": "text", "text": "..."}]`), depending on the model and
+    LangChain version — some models return blocks even for text. The original
+    `json.loads(content)` raised TypeError on the block form and silently
+    skipped analysis, so both shapes are handled here. Returns None when the
+    content is not a JSON array (e.g. "No data found.").
+    """
+    if isinstance(content, list):
+        text = "".join(
+            block["text"]
+            for block in content
+            if isinstance(block, dict) and isinstance(block.get("text"), str)
+        )
+    elif isinstance(content, str):
+        text = content
+    else:
+        text = ""
+
+    if not text:
+        return None
+
+    try:
+        parsed = json.loads(text)
+    except (json.JSONDecodeError, TypeError):
+        return None
+
+    return parsed if isinstance(parsed, list) else None
+
+
 @dataclass(frozen=True)
 class InvestigationResult:
     answer: str
@@ -90,6 +122,7 @@ class FraudInspectorGraph:
         self._tracer = InvestigationTracer(
             model=cfg.llm.model_name,
             provider=cfg.llm.provider,
+            service_name=cfg.monitoring.service_name,
             mask_sensitive_data=cfg.monitoring.mask_sensitive_data,
         )
         # Env-configured (LANGFUSE_PUBLIC_KEY/SECRET_KEY/BASE_URL); no-ops if
@@ -113,12 +146,9 @@ class FraudInspectorGraph:
 
             async def auto_analyze_node(state: GraphState, config: RunnableConfig):
                 last_message = state["messages"][-1]
-                try:
-                    transactions = json.loads(last_message.content)
-                except (json.JSONDecodeError, TypeError):
-                    transactions = None
+                transactions = _parse_lookup_payload(last_message.content)
 
-                if not isinstance(transactions, list):
+                if transactions is None:
                     return {"messages": []}
 
                 lines = []

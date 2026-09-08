@@ -91,10 +91,23 @@ class InvestigationTracer:
     callers will pick up.
     """
 
-    def __init__(self, *, model: str, provider: str, mask_sensitive_data: bool = True):
+    def __init__(
+        self,
+        *,
+        model: str,
+        provider: str,
+        service_name: str = "ms-fraud-rag",
+        mask_sensitive_data: bool = True,
+    ):
         self.model = model
         self.provider = provider
+        self.service_name = service_name
         self.environment = resolve_environment()
+        # Sets the OTel `service.name` resource attribute (otherwise
+        # "unknown_service"). Must happen before Langfuse() builds the tracer
+        # provider — hence why this tracer is constructed before CallbackHandler.
+        # An explicit env var (e.g. from the deploy) still wins over config.
+        os.environ.setdefault("OTEL_SERVICE_NAME", service_name)
         self.client = Langfuse(
             environment=self.environment,
             mask=mask_langfuse_data if mask_sensitive_data else None,
@@ -137,6 +150,9 @@ class InvestigationTracer:
                         user_id=user_id,
                         tags=tags,
                         metadata=metadata,
+                        # Otherwise the trace shows up unnamed in the Langfuse
+                        # trace list.
+                        trace_name=self.service_name,
                     )
                 )
             except Exception:
