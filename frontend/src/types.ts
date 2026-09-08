@@ -28,6 +28,7 @@ export interface TransactionRecord {
   event_timestamp: string;
   amount: number;
   is_fraud: boolean;
+  fraud_probability: number | null;
   data_source: string;
 }
 

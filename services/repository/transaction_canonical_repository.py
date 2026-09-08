@@ -17,6 +17,7 @@ class TransactionCanonicalRepository(BaseRepository):
             event_timestamp=data["event_timestamp"],
             amount=data["amount"],
             is_fraud=data["is_fraud"],
+            fraud_probability=data["fraud_probability"],
             features=data["features"],
             data_source=data["data_source"],
         ).on_conflict_do_nothing(index_elements=["transaction_id"])
@@ -25,7 +26,12 @@ class TransactionCanonicalRepository(BaseRepository):
 
     # Whitelisted so sort_by can be safely interpolated into the ORDER BY clause
     # (bind params can't parameterize identifiers).
-    _SORT_COLUMNS = {"time": "event_timestamp", "amount": "amount", "status": "is_fraud"}
+    _SORT_COLUMNS = {
+        "time": "event_timestamp",
+        "amount": "amount",
+        "status": "is_fraud",
+        "risk": "fraud_probability",
+    }
 
     def get_transactions(
         self,
@@ -57,6 +63,7 @@ class TransactionCanonicalRepository(BaseRepository):
                 event_timestamp,
                 amount::float AS amount,
                 is_fraud,
+                fraud_probability::float AS fraud_probability,
                 data_source
             FROM transactions
             WHERE {where_clause}

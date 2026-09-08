@@ -32,7 +32,7 @@ export interface TransactionQueryOptions {
   offset?: number;
   isFraud?: boolean;
   search?: string;
-  sortBy?: "time" | "amount" | "status";
+  sortBy?: "time" | "amount" | "status" | "risk";
   sortDir?: "asc" | "desc";
 }
 

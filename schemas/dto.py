@@ -32,6 +32,7 @@ class TransactionRecord(BaseModel):
     event_timestamp: datetime
     amount: float
     is_fraud: bool
+    fraud_probability: float | None = None
     data_source: str
 
 

@@ -4,7 +4,7 @@ import type { TransactionRecord } from "../types";
 import "./TransactionTable.css";
 
 type StatusFilter = "all" | "fraud" | "clear";
-type SortColumn = "time" | "amount" | "status";
+type SortColumn = "time" | "amount" | "status" | "risk";
 type SortDir = "asc" | "desc";
 
 const PAGE_SIZE = 50;
@@ -26,6 +26,10 @@ function formatAmount(amount: number): string {
 
 function shortId(id: string): string {
   return id.split("-")[0];
+}
+
+function formatRisk(probability: number | null): string {
+  return probability == null ? "—" : `${Math.round(probability * 100)}%`;
 }
 
 export default function TransactionTable({ start, end, reloadKey }: TransactionTableProps) {
@@ -144,6 +148,9 @@ export default function TransactionTable({ start, end, reloadKey }: TransactionT
                   <th className="tx-table__sortable" onClick={() => toggleSort("status")}>
                     Status {sortIndicator("status")}
                   </th>
+                  <th className="tx-table__num tx-table__sortable" onClick={() => toggleSort("risk")}>
+                    Risk {sortIndicator("risk")}
+                  </th>
                   <th>Source</th>
                 </tr>
               </thead>
@@ -162,6 +169,7 @@ export default function TransactionTable({ start, end, reloadKey }: TransactionT
                         {r.is_fraud ? "Fraud" : "Clear"}
                       </span>
                     </td>
+                    <td className="data tx-table__num">{formatRisk(r.fraud_probability)}</td>
                     <td className="tx-table__source">{r.data_source}</td>
                   </tr>
                 ))}

@@ -109,7 +109,7 @@ async def get_transactions(
     offset: int = Query(default=0, ge=0),
     is_fraud: bool | None = Query(default=None),
     search: str | None = Query(default=None, max_length=100),
-    sort_by: str = Query(default="time", pattern="^(time|amount|status)$"),
+    sort_by: str = Query(default="time", pattern="^(time|amount|status|risk)$"),
     sort_dir: str = Query(default="desc", pattern="^(asc|desc)$"),
 ):
     try:
