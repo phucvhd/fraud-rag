@@ -33,9 +33,27 @@ class TransactionRecord(BaseModel):
     amount: float
     is_fraud: bool
     fraud_probability: float | None = None
+    status: str | None = None
     data_source: str
 
 
 class TransactionListResponse(BaseModel):
     data: list[TransactionRecord]
     total: int
+
+
+class StatusCountsResponse(BaseModel):
+    received: int
+    flagged: int
+    embedding: int
+    embedded: int
+
+
+class ServiceHealth(BaseModel):
+    name: str
+    label: str
+    status: str  # "up" | "down"
+
+
+class ServiceHealthResponse(BaseModel):
+    services: list[ServiceHealth]

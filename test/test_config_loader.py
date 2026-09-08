@@ -34,6 +34,7 @@ dashboard:
   rag_url: http://localhost:8000
   inject_url: http://localhost:8001
   transactions_url: http://localhost:8002
+  fraud_detection_base_url: http://localhost:8003
 correlation_analysis:
   features:
     V1: -0.1

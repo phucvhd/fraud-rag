@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { fetchTransactions } from "../api/client";
+import { fetchTransactions, type PipelineStatus } from "../api/client";
 import type { TransactionRecord } from "../types";
 import "./TransactionTable.css";
 
 type StatusFilter = "all" | "fraud" | "clear";
+type PipelineFilter = "all" | PipelineStatus;
 type SortColumn = "time" | "amount" | "status" | "risk";
 type SortDir = "asc" | "desc";
 
@@ -12,6 +13,13 @@ const STATUS_FILTERS: { id: StatusFilter; label: string }[] = [
   { id: "all", label: "All" },
   { id: "fraud", label: "Fraud" },
   { id: "clear", label: "Clear" },
+];
+const PIPELINE_FILTERS: { id: PipelineFilter; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "received", label: "Received" },
+  { id: "flagged", label: "Flagged" },
+  { id: "embedding", label: "Embedding" },
+  { id: "embedded", label: "Embedded" },
 ];
 
 interface TransactionTableProps {
@@ -24,18 +32,26 @@ function formatAmount(amount: number): string {
   return amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-function shortId(id: string): string {
-  return id.split("-")[0];
-}
-
 function formatRisk(probability: number | null): string {
   return probability == null ? "—" : `${Math.round(probability * 100)}%`;
+}
+
+const PIPELINE_LABELS: Record<string, string> = {
+  received: "Received",
+  flagged: "Flagged",
+  embedding: "Embedding",
+  embedded: "Embedded",
+};
+
+function formatPipelineStatus(status: string | null): string {
+  return status ? (PIPELINE_LABELS[status] ?? status) : "—";
 }
 
 export default function TransactionTable({ start, end, reloadKey }: TransactionTableProps) {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [pipelineFilter, setPipelineFilter] = useState<PipelineFilter>("all");
   const [sortBy, setSortBy] = useState<SortColumn>("time");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [page, setPage] = useState(0);
@@ -53,7 +69,7 @@ export default function TransactionTable({ start, end, reloadKey }: TransactionT
   // Any change to the query resets pagination back to the first page.
   useEffect(() => {
     setPage(0);
-  }, [debouncedSearch, statusFilter, sortBy, sortDir, start, end, reloadKey]);
+  }, [debouncedSearch, statusFilter, pipelineFilter, sortBy, sortDir, start, end, reloadKey]);
 
   useEffect(() => {
     if (start >= end) return;
@@ -63,6 +79,7 @@ export default function TransactionTable({ start, end, reloadKey }: TransactionT
       limit: PAGE_SIZE,
       offset: page * PAGE_SIZE,
       isFraud: statusFilter === "all" ? undefined : statusFilter === "fraud",
+      pipelineStatus: pipelineFilter === "all" ? undefined : pipelineFilter,
       search: debouncedSearch || undefined,
       sortBy,
       sortDir,
@@ -83,7 +100,7 @@ export default function TransactionTable({ start, end, reloadKey }: TransactionT
     return () => {
       active = false;
     };
-  }, [start, end, reloadKey, page, debouncedSearch, statusFilter, sortBy, sortDir]);
+  }, [start, end, reloadKey, page, debouncedSearch, statusFilter, pipelineFilter, sortBy, sortDir]);
 
   function toggleSort(column: SortColumn) {
     if (sortBy === column) {
@@ -126,6 +143,18 @@ export default function TransactionTable({ start, end, reloadKey }: TransactionT
             </button>
           ))}
         </div>
+        <select
+          className="tx-table__select"
+          aria-label="Filter by pipeline stage"
+          value={pipelineFilter}
+          onChange={(e) => setPipelineFilter(e.target.value as PipelineFilter)}
+        >
+          {PIPELINE_FILTERS.map((f) => (
+            <option key={f.id} value={f.id}>
+              {f.id === "all" ? "All stages" : f.label}
+            </option>
+          ))}
+        </select>
       </div>
 
       {error ? (
@@ -151,6 +180,7 @@ export default function TransactionTable({ start, end, reloadKey }: TransactionT
                   <th className="tx-table__num tx-table__sortable" onClick={() => toggleSort("risk")}>
                     Risk {sortIndicator("risk")}
                   </th>
+                  <th>Pipeline</th>
                   <th>Source</th>
                 </tr>
               </thead>
@@ -160,9 +190,7 @@ export default function TransactionTable({ start, end, reloadKey }: TransactionT
                     <td className="data">
                       {new Date(r.event_timestamp).toLocaleString([], { dateStyle: "short", timeStyle: "medium" })}
                     </td>
-                    <td className="data" title={r.transaction_id}>
-                      {shortId(r.transaction_id)}
-                    </td>
+                    <td className="data">{r.transaction_id}</td>
                     <td className="data tx-table__num">{formatAmount(r.amount)}</td>
                     <td>
                       <span className={`tx-badge ${r.is_fraud ? "tx-badge--fraud" : "tx-badge--normal"}`}>
@@ -170,6 +198,11 @@ export default function TransactionTable({ start, end, reloadKey }: TransactionT
                       </span>
                     </td>
                     <td className="data tx-table__num">{formatRisk(r.fraud_probability)}</td>
+                    <td>
+                      <span className={`pipeline-badge pipeline-badge--${r.status ?? "unknown"}`}>
+                        {formatPipelineStatus(r.status)}
+                      </span>
+                    </td>
                     <td className="tx-table__source">{r.data_source}</td>
                   </tr>
                 ))}

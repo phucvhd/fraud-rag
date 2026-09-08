@@ -5,6 +5,12 @@
   gap: var(--space-5);
 }
 
+.monitor-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
 /* Ledger strip — numbers lead, labels trail. No card chrome; hairlines only. */
 .ledger-strip {
   display: flex;

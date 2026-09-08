@@ -21,6 +21,9 @@ def _client_with_inspector(inspector_run=None):
 
     app.state.inspector = mock_inspector
     app.state.transaction_repo = MagicMock()
+    app.state.status_repo = MagicMock()
+    app.state.health_checker = MagicMock()
+    app.state.health_checker.check_all = AsyncMock(return_value=[])
     return TestClient(app), mock_inspector
 
 
@@ -68,6 +71,31 @@ def test_get_transactions_success():
     assert body["data"][0]["amount"] == 42.5
 
 
+def test_get_transactions_passes_pipeline_status_filter():
+    client, _ = _client_with_inspector()
+    app.state.transaction_repo.get_transactions.return_value = ([], 0)
+
+    response = client.get(
+        "/transactions",
+        params={"start": "2026-09-07T00:00:00", "end": "2026-09-08T00:00:00", "pipeline_status": "embedding"},
+    )
+
+    assert response.status_code == 200
+    kwargs = app.state.transaction_repo.get_transactions.call_args.kwargs
+    assert kwargs["pipeline_status"] == "embedding"
+
+
+def test_get_transactions_rejects_invalid_pipeline_status():
+    client, _ = _client_with_inspector()
+
+    response = client.get(
+        "/transactions",
+        params={"start": "2026-09-07T00:00:00", "end": "2026-09-08T00:00:00", "pipeline_status": "bogus"},
+    )
+
+    assert response.status_code == 422
+
+
 def test_get_transactions_exception():
     client, _ = _client_with_inspector()
     app.state.transaction_repo.get_transactions.side_effect = Exception("db down")
@@ -78,3 +106,52 @@ def test_get_transactions_exception():
     )
     assert response.status_code == 500
     assert response.json() == {"detail": "Failed to fetch transactions."}
+
+
+def test_get_status_counts_success():
+    client, _ = _client_with_inspector()
+    app.state.status_repo.get_status_counts.return_value = {
+        "received": 2,
+        "flagged": 1,
+        "embedding": 0,
+        "embedded": 500,
+    }
+
+    response = client.get(
+        "/transactions/status-counts",
+        params={"start": "2026-09-07T00:00:00", "end": "2026-09-08T00:00:00"},
+    )
+    assert response.status_code == 200
+    assert response.json() == {"received": 2, "flagged": 1, "embedding": 0, "embedded": 500}
+
+
+def test_get_status_counts_exception():
+    client, _ = _client_with_inspector()
+    app.state.status_repo.get_status_counts.side_effect = Exception("db down")
+
+    response = client.get(
+        "/transactions/status-counts",
+        params={"start": "2026-09-07T00:00:00", "end": "2026-09-08T00:00:00"},
+    )
+    assert response.status_code == 500
+    assert response.json() == {"detail": "Failed to fetch status counts."}
+
+
+def test_get_dependency_health_success():
+    client, _ = _client_with_inspector()
+    app.state.health_checker.check_all = AsyncMock(
+        return_value=[
+            {"name": "postgres", "label": "Postgres", "status": "up"},
+            {"name": "kafka", "label": "Kafka", "status": "down"},
+        ]
+    )
+
+    response = client.get("/health/dependencies")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "services": [
+            {"name": "postgres", "label": "Postgres", "status": "up"},
+            {"name": "kafka", "label": "Kafka", "status": "down"},
+        ]
+    }

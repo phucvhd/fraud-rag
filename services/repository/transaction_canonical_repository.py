@@ -26,12 +26,13 @@ class TransactionCanonicalRepository(BaseRepository):
             conn.execute(stmt)
 
     # Whitelisted so sort_by can be safely interpolated into the ORDER BY clause
-    # (bind params can't parameterize identifiers).
+    # (bind params can't parameterize identifiers). Prefixed with t. since the
+    # query below joins against transaction_status, which also has an id column.
     _SORT_COLUMNS = {
-        "time": "event_timestamp",
-        "amount": "amount",
-        "status": "is_fraud",
-        "risk": "fraud_probability",
+        "time": "t.event_timestamp",
+        "amount": "t.amount",
+        "status": "t.is_fraud",
+        "risk": "t.fraud_probability",
     }
 
     def get_transactions(
@@ -41,39 +42,46 @@ class TransactionCanonicalRepository(BaseRepository):
         limit: int = 50,
         offset: int = 0,
         is_fraud: bool | None = None,
+        pipeline_status: str | None = None,
         search: str | None = None,
         sort_by: str = "time",
         sort_dir: str = "desc",
     ) -> tuple[list[dict], int]:
-        column = self._SORT_COLUMNS.get(sort_by, "event_timestamp")
+        column = self._SORT_COLUMNS.get(sort_by, "t.event_timestamp")
         direction = "ASC" if sort_dir == "asc" else "DESC"
 
-        where = ["event_timestamp >= :start", "event_timestamp < :end"]
+        where = ["t.event_timestamp >= :start", "t.event_timestamp < :end"]
         params: dict = {"start": start_dt, "end": end_dt, "limit": limit, "offset": offset}
         if is_fraud is not None:
-            where.append("is_fraud = :is_fraud")
+            where.append("t.is_fraud = :is_fraud")
             params["is_fraud"] = is_fraud
+        if pipeline_status is not None:
+            where.append("ts.status = :pipeline_status")
+            params["pipeline_status"] = pipeline_status
         if search:
-            where.append("(transaction_id::text ILIKE :search OR data_source ILIKE :search)")
+            where.append("(t.transaction_id::text ILIKE :search OR t.data_source ILIKE :search)")
             params["search"] = f"%{search}%"
         where_clause = " AND ".join(where)
 
         rows_query = text(f"""
             SELECT
-                transaction_id,
-                event_timestamp,
-                amount::float AS amount,
-                is_fraud,
-                fraud_probability::float AS fraud_probability,
-                data_source
-            FROM transactions
+                t.transaction_id,
+                t.event_timestamp,
+                t.amount::float AS amount,
+                t.is_fraud,
+                t.fraud_probability::float AS fraud_probability,
+                t.data_source,
+                ts.status
+            FROM transactions t
+            LEFT JOIN transaction_status ts ON ts.transaction_id = t.transaction_id
             WHERE {where_clause}
             ORDER BY {column} {direction}
             LIMIT :limit OFFSET :offset
         """)
         count_query = text(f"""
             SELECT COUNT(*)::int AS total
-            FROM transactions
+            FROM transactions t
+            LEFT JOIN transaction_status ts ON ts.transaction_id = t.transaction_id
             WHERE {where_clause}
         """)
         with self.engine.connect() as conn:

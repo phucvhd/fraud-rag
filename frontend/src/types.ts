@@ -29,10 +29,28 @@ export interface TransactionRecord {
   amount: number;
   is_fraud: boolean;
   fraud_probability: number | null;
+  status: string | null;
   data_source: string;
 }
 
 export interface TransactionListResponse {
   data: TransactionRecord[];
   total: number;
+}
+
+export interface StatusCountsResponse {
+  received: number;
+  flagged: number;
+  embedding: number;
+  embedded: number;
+}
+
+export interface ServiceHealth {
+  name: string;
+  label: string;
+  status: "up" | "down";
+}
+
+export interface ServiceHealthResponse {
+  services: ServiceHealth[];
 }

@@ -102,7 +102,7 @@ def test_repository_get_transactions_with_filters(mock_config_loader, mock_get_e
     query_text = str(rows_query)
     assert "is_fraud = :is_fraud" in query_text
     assert "ILIKE" in query_text
-    assert "ORDER BY amount ASC" in query_text
+    assert "ORDER BY t.amount ASC" in query_text
     assert rows_params == {
         "start": datetime(2026, 9, 7),
         "end": datetime(2026, 9, 8),
@@ -111,6 +111,37 @@ def test_repository_get_transactions_with_filters(mock_config_loader, mock_get_e
         "is_fraud": True,
         "search": "%abc%",
     }
+
+
+@patch("services.repository.base.get_engine")
+@patch("services.repository.base.config_loader")
+def test_repository_get_transactions_filters_by_pipeline_status(mock_config_loader, mock_get_engine):
+    mock_config = MagicMock()
+    mock_config.database.url = "sqlite:///:memory:"
+    mock_config_loader.load.return_value = mock_config
+
+    mock_engine = MagicMock()
+    mock_get_engine.return_value = mock_engine
+    mock_conn = MagicMock()
+    mock_engine.connect.return_value.__enter__.return_value = mock_conn
+
+    rows_result = MagicMock()
+    rows_result.mappings.return_value.all.return_value = []
+    count_result = MagicMock()
+    count_result.scalar_one.return_value = 0
+    mock_conn.execute.side_effect = [rows_result, count_result]
+
+    repo = TransactionRepository()
+    repo.get_transactions(datetime(2026, 9, 7), datetime(2026, 9, 8), pipeline_status="embedding")
+
+    rows_query, rows_params = mock_conn.execute.call_args_list[0].args
+    count_query, count_params = mock_conn.execute.call_args_list[1].args
+    assert "ts.status = :pipeline_status" in str(rows_query)
+    assert rows_params["pipeline_status"] == "embedding"
+    # The count query must join transaction_status too, or filtering by
+    # pipeline_status would make it reference an undefined "ts" alias.
+    assert "LEFT JOIN transaction_status ts" in str(count_query)
+    assert count_params["pipeline_status"] == "embedding"
 
 
 @patch("services.repository.base.get_engine")
@@ -135,4 +166,4 @@ def test_repository_get_transactions_unknown_sort_column_falls_back(mock_config_
     repo.get_transactions(datetime(2026, 9, 7), datetime(2026, 9, 8), sort_by="'; DROP TABLE transactions; --")
 
     rows_query, _ = mock_conn.execute.call_args_list[0].args
-    assert "ORDER BY event_timestamp DESC" in str(rows_query)
+    assert "ORDER BY t.event_timestamp DESC" in str(rows_query)

@@ -39,6 +39,7 @@ class DashboardConfig(BaseModel):
     rag_url: str
     inject_url: str
     transactions_url: str
+    fraud_detection_base_url: str
 
 
 class MCPServerConfig(BaseModel):

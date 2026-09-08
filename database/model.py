@@ -46,3 +46,24 @@ class EmbeddingModel(Base):
 
     def __repr__(self) -> str:
         return f"EmbeddingModel(transaction_id={self.transaction_id!r}, embedding_model={self.embedding_model!r})"
+
+
+class TransactionStatusModel(Base):
+    """Pipeline progress for a transaction_id, written by two independent
+    services (fraud-detection-system marks received/flagged; fraud-rag marks
+    embedding/embedded). Deliberately not FK'd to `transactions` — the
+    'received' row is written before that transaction's row exists there.
+    """
+
+    __tablename__ = "transaction_status"
+
+    transaction_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    status: Mapped[str] = mapped_column(VARCHAR(20))
+    received_at: Mapped[datetime.datetime | None] = mapped_column(TIMESTAMP, nullable=True)
+    flagged_at: Mapped[datetime.datetime | None] = mapped_column(TIMESTAMP, nullable=True)
+    embedding_started_at: Mapped[datetime.datetime | None] = mapped_column(TIMESTAMP, nullable=True)
+    embedded_at: Mapped[datetime.datetime | None] = mapped_column(TIMESTAMP, nullable=True)
+    updated_at: Mapped[datetime.datetime] = mapped_column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
+
+    def __repr__(self) -> str:
+        return f"TransactionStatusModel(transaction_id={self.transaction_id!r}, status={self.status!r})"

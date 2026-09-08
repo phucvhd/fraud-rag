@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { fetchTimeseries, injectConfigured, injectTransactions } from "../api/client";
 import type { TimeseriesResponse } from "../types";
 import MiniBarChart from "./MiniBarChart";
+import StatusCountsStrip from "./StatusCountsStrip";
 import TransactionTable from "./TransactionTable";
 import "./MonitorView.css";
 
@@ -225,6 +226,11 @@ export default function MonitorView() {
           <p>Widen the window, or send test traffic below to see the chart populate.</p>
         </div>
       )}
+
+      <div className="monitor-section">
+        <span className="eyebrow">Processing pipeline — received → flagged → embedding → embedded</span>
+        <StatusCountsStrip start={start} end={end} reloadKey={reloadKey} />
+      </div>
 
       <TransactionTable start={start} end={end} reloadKey={reloadKey} />
 

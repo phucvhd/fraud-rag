@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import "./App.css";
 import AgentView from "./components/AgentView";
 import MonitorView from "./components/MonitorView";
+import ServiceHealthList from "./components/ServiceHealthList";
 
 export default function App() {
   const [clock, setClock] = useState(() => new Date());
@@ -18,6 +19,7 @@ export default function App() {
           <span className="rail__mark" aria-hidden="true" />
           <span className="rail__name">Fraud Ledger</span>
         </div>
+        <ServiceHealthList />
         <div className="rail__status">
           <span className="rail__status-dot" aria-hidden="true" />
           <span>Live</span>

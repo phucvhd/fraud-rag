@@ -1,4 +1,4 @@
-import type { TimeseriesResponse, TransactionListResponse } from "../types";
+import type { ServiceHealthResponse, StatusCountsResponse, TimeseriesResponse, TransactionListResponse } from "../types";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 const INJECT_URL = import.meta.env.VITE_INJECT_URL ?? "";
@@ -27,10 +27,13 @@ export async function fetchTimeseries(start: Date, end: Date): Promise<Timeserie
   return resp.json();
 }
 
+export type PipelineStatus = "received" | "flagged" | "embedding" | "embedded";
+
 export interface TransactionQueryOptions {
   limit?: number;
   offset?: number;
   isFraud?: boolean;
+  pipelineStatus?: PipelineStatus;
   search?: string;
   sortBy?: "time" | "amount" | "status" | "risk";
   sortDir?: "asc" | "desc";
@@ -50,10 +53,28 @@ export async function fetchTransactions(
     sort_dir: opts.sortDir ?? "desc",
   });
   if (opts.isFraud !== undefined) params.set("is_fraud", String(opts.isFraud));
+  if (opts.pipelineStatus) params.set("pipeline_status", opts.pipelineStatus);
   if (opts.search) params.set("search", opts.search);
   const resp = await fetch(`${API_BASE}/transactions?${params}`);
   if (!resp.ok) {
     throw new ApiError(`Failed to fetch transactions (${resp.status})`);
+  }
+  return resp.json();
+}
+
+export async function fetchStatusCounts(start: Date, end: Date): Promise<StatusCountsResponse> {
+  const params = new URLSearchParams({ start: start.toISOString(), end: end.toISOString() });
+  const resp = await fetch(`${API_BASE}/transactions/status-counts?${params}`);
+  if (!resp.ok) {
+    throw new ApiError(`Failed to fetch status counts (${resp.status})`);
+  }
+  return resp.json();
+}
+
+export async function fetchDependencyHealth(): Promise<ServiceHealthResponse> {
+  const resp = await fetch(`${API_BASE}/health/dependencies`);
+  if (!resp.ok) {
+    throw new ApiError(`Failed to fetch service health (${resp.status})`);
   }
   return resp.json();
 }
