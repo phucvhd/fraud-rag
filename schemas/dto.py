@@ -1,3 +1,6 @@
+from datetime import datetime
+from uuid import UUID
+
 from pydantic import BaseModel, Field
 
 
@@ -22,3 +25,17 @@ class TimeseriesResponse(BaseModel):
     total_transactions: int
     total_fraud: int
     total_normal: int
+
+
+class TransactionRecord(BaseModel):
+    transaction_id: UUID
+    event_timestamp: datetime
+    amount: float
+    is_fraud: bool
+    fraud_probability: float | None = None
+    data_source: str
+
+
+class TransactionListResponse(BaseModel):
+    data: list[TransactionRecord]
+    total: int

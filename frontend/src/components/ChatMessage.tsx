@@ -23,8 +23,8 @@ export default function ChatMessage({ entry }: { entry: ChatEntry }) {
   if (entry.role === "user") {
     return (
       <div className="entry entry--user">
-        <span className="eyebrow">YOU · {formatTime(entry.timestamp)}</span>
-        <p className="entry__text">&gt; {entry.content}</p>
+        <span className="eyebrow">{formatTime(entry.timestamp)}</span>
+        <p className="entry__text">{entry.content}</p>
       </div>
     );
   }
@@ -32,41 +32,37 @@ export default function ChatMessage({ entry }: { entry: ChatEntry }) {
   if (entry.role === "error") {
     return (
       <div className="entry entry--error">
-        <span className="eyebrow">✕ REQUEST FAILED · {formatTime(entry.timestamp)}</span>
+        <span className="eyebrow">Request failed · {formatTime(entry.timestamp)}</span>
         <p className="entry__text">{entry.content}</p>
       </div>
     );
   }
 
   return (
-    <div className="report-slip">
-      <div className="report-slip__tab" aria-hidden="true">
-        AGENT
+    <div className="finding">
+      <div className="finding__head">
+        <span className="eyebrow">
+          {entry.topK ? `${entry.topK} similar cases · ` : ""}
+          {formatTime(entry.timestamp)}
+        </span>
+        <button type="button" className="finding__copy" onClick={copyAnswer}>
+          {copied ? "Copied" : "Copy"}
+        </button>
       </div>
-      <div className="report-slip__body">
-        <div className="report-slip__head">
-          <span className="eyebrow">
-            REPLY{entry.topK ? ` · ${entry.topK} cases` : ""} · {formatTime(entry.timestamp)}
-          </span>
-          <button type="button" className="report-slip__copy" onClick={copyAnswer}>
-            {copied ? "✓ Copied" : "Copy"}
+      <Markdown content={entry.content} />
+      {entry.raw !== undefined && (
+        <>
+          <button
+            type="button"
+            className="finding__trace-toggle"
+            aria-expanded={traceOpen}
+            onClick={() => setTraceOpen((open) => !open)}
+          >
+            {traceOpen ? "Hide trace" : "View trace"}
           </button>
-        </div>
-        <Markdown content={entry.content} />
-        {entry.raw !== undefined && (
-          <>
-            <button
-              type="button"
-              className="report-slip__trace-toggle"
-              aria-expanded={traceOpen}
-              onClick={() => setTraceOpen((open) => !open)}
-            >
-              {traceOpen ? "▾ Hide trace" : "▸ View trace"}
-            </button>
-            {traceOpen && <pre className="report-slip__trace term">{JSON.stringify(entry.raw, null, 2)}</pre>}
-          </>
-        )}
-      </div>
+          {traceOpen && <pre className="finding__trace data">{JSON.stringify(entry.raw, null, 2)}</pre>}
+        </>
+      )}
     </div>
   );
 }

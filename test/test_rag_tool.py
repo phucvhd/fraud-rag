@@ -2,6 +2,8 @@ import json
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from services.tool.rag_tool import RAGQueryEngine
 
 
@@ -35,6 +37,7 @@ def test_fraud_lookup_returns_serialized_json(mock_config_loader, mock_get_engin
         "amount": Decimal("218.09"),
         "event_timestamp": "2026-03-27 15:30:26",
         "is_fraud": True,
+        "fraud_probability": Decimal("0.92310"),
         "features": {"V1": 4.4045},
     }]
     engine, _ = _build_engine(mock_get_engine, mock_config_loader, records)
@@ -44,7 +47,27 @@ def test_fraud_lookup_returns_serialized_json(mock_config_loader, mock_get_engin
 
     assert payload[0]["is_fraud"] is True
     assert payload[0]["amount"] == 218.09
+    assert payload[0]["fraud_probability"] == pytest.approx(0.9231)
     assert payload[0]["features"] == {"V1": 4.4045}
+
+
+@patch("services.tool.rag_tool.get_engine")
+@patch("services.tool.rag_tool.config_loader")
+def test_fraud_lookup_serializes_null_probability(mock_config_loader, mock_get_engine):
+    records = [{
+        "transaction_id": "7bc254fe-8d4b-433f-bfac-bc265b130eaa",
+        "amount": Decimal("218.09"),
+        "event_timestamp": "2026-03-27 15:30:26",
+        "is_fraud": True,
+        "fraud_probability": None,
+        "features": {"V1": 4.4045},
+    }]
+    engine, _ = _build_engine(mock_get_engine, mock_config_loader, records)
+
+    result = engine.fraud_lookup(3)
+    payload = json.loads(result)
+
+    assert payload[0]["fraud_probability"] is None
 
 
 @patch("services.tool.rag_tool.get_engine")

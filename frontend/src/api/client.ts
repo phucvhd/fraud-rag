@@ -1,4 +1,4 @@
-import type { TimeseriesResponse } from "../types";
+import type { TimeseriesResponse, TransactionListResponse } from "../types";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 const INJECT_URL = import.meta.env.VITE_INJECT_URL ?? "";
@@ -21,6 +21,37 @@ export async function askAgent(prompt: string, topK: number): Promise<{ answer: 
 export async function fetchTimeseries(start: Date, end: Date): Promise<TimeseriesResponse> {
   const params = new URLSearchParams({ start: start.toISOString(), end: end.toISOString() });
   const resp = await fetch(`${API_BASE}/transactions/timeseries?${params}`);
+  if (!resp.ok) {
+    throw new ApiError(`Failed to fetch transactions (${resp.status})`);
+  }
+  return resp.json();
+}
+
+export interface TransactionQueryOptions {
+  limit?: number;
+  offset?: number;
+  isFraud?: boolean;
+  search?: string;
+  sortBy?: "time" | "amount" | "status" | "risk";
+  sortDir?: "asc" | "desc";
+}
+
+export async function fetchTransactions(
+  start: Date,
+  end: Date,
+  opts: TransactionQueryOptions = {},
+): Promise<TransactionListResponse> {
+  const params = new URLSearchParams({
+    start: start.toISOString(),
+    end: end.toISOString(),
+    limit: String(opts.limit ?? 50),
+    offset: String(opts.offset ?? 0),
+    sort_by: opts.sortBy ?? "time",
+    sort_dir: opts.sortDir ?? "desc",
+  });
+  if (opts.isFraud !== undefined) params.set("is_fraud", String(opts.isFraud));
+  if (opts.search) params.set("search", opts.search);
+  const resp = await fetch(`${API_BASE}/transactions?${params}`);
   if (!resp.ok) {
     throw new ApiError(`Failed to fetch transactions (${resp.status})`);
   }

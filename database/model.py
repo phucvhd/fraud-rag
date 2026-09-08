@@ -19,6 +19,7 @@ class TransactionModel(Base):
     event_timestamp: Mapped[datetime.datetime] = mapped_column(TIMESTAMP, index=True)
     amount: Mapped[float] = mapped_column(DECIMAL(15, 2))
     is_fraud: Mapped[bool] = mapped_column(BOOLEAN, default=False)
+    fraud_probability: Mapped[float | None] = mapped_column(DECIMAL(6, 5), nullable=True)
     features: Mapped[dict] = mapped_column(JSONB)
     data_source: Mapped[str] = mapped_column(VARCHAR(50))
     created_at: Mapped[datetime.datetime] = mapped_column(TIMESTAMP, server_default=func.now())

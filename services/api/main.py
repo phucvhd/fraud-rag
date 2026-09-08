@@ -8,7 +8,14 @@ import uvicorn
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 
-from schemas.dto import QueryRequest, QueryResponse, TimeseriesBucket, TimeseriesResponse
+from schemas.dto import (
+    QueryRequest,
+    QueryResponse,
+    TimeseriesBucket,
+    TimeseriesResponse,
+    TransactionListResponse,
+    TransactionRecord,
+)
 from services.agent.agent import LLMAgent
 from services.agent.graph import FraudInspectorGraph
 from services.agent.sentence_transformer import SentenceTransformerModel
@@ -93,5 +100,27 @@ async def get_transaction_timeseries(
         raise HTTPException(status_code=500, detail="Failed to fetch transaction timeseries.")
 
 
+@app.get("/transactions", response_model=TransactionListResponse)
+async def get_transactions(
+    request: Request,
+    start: datetime = Query(...),
+    end: datetime = Query(...),
+    limit: int = Query(default=50, gt=0, le=200),
+    offset: int = Query(default=0, ge=0),
+    is_fraud: bool | None = Query(default=None),
+    search: str | None = Query(default=None, max_length=100),
+    sort_by: str = Query(default="time", pattern="^(time|amount|status|risk)$"),
+    sort_dir: str = Query(default="desc", pattern="^(asc|desc)$"),
+):
+    try:
+        rows, total = request.app.state.transaction_repo.get_transactions(
+            start, end, limit=limit, offset=offset, is_fraud=is_fraud, search=search, sort_by=sort_by, sort_dir=sort_dir
+        )
+        return TransactionListResponse(data=[TransactionRecord(**r) for r in rows], total=total)
+    except Exception:
+        logger.exception("Transaction list query failed")
+        raise HTTPException(status_code=500, detail="Failed to fetch transactions.")
+
+
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8001)

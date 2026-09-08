@@ -1,40 +1,40 @@
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 
-  /* Color — "CRT console": phosphor-dark ground, multi-hue arcade signal colors.
-     Hues are semantic: green = clean, red = fraud, cyan = action, amber = warn. */
-  --bg: #0d0b1a;            /* deep indigo-black CRT ground */
-  --bg-panel: #171334;      /* raised panel */
-  --bg-inset: #08060f;      /* recessed well (inputs, code) */
-  --bg-hover: #211c46;
+  /* Color — "ledger room": paper-grey ground, ink text, one alarm color.
+     Hues are semantic: teal = clear, brick = fraud, navy = brand/action, ochre = warn. */
+  --bg: #f5f6f3;            /* cool paper-grey ground */
+  --bg-panel: #ffffff;      /* raised surface */
+  --bg-inset: #eceeea;      /* recessed well (inputs, wells) */
+  --bg-hover: #e7e9e4;
 
-  --fg: #e9e4ff;            /* phosphor lavender-white */
-  --fg-dim: #9a90d6;
-  --fg-faint: #5f5892;
+  --ink: #10181c;           /* near-black, teal-tinted */
+  --ink-dim: #56646a;
+  --ink-faint: #8d9a9e;
 
-  --green: #4bf5a0;         /* normal / verified */
-  --green-dim: #163a2c;
-  --red: #ff5277;           /* fraud / alert */
-  --red-dim: #3a1420;
-  --cyan: #35e0e0;          /* primary action / brand */
-  --cyan-dim: #0f3540;
-  --amber: #ffd23f;         /* highlight / warning */
-  --magenta: #c86bff;       /* secondary accent */
+  --brand: #223a5e;         /* ledger navy — primary action / active state */
+  --brand-soft: #e4e9ef;
+  --fraud: #b23a2e;         /* brick alarm — fraud only, never decorative */
+  --fraud-soft: #f5deda;
+  --normal: #1e7a5f;        /* verified teal-green */
+  --normal-soft: #dceee6;
+  --warn: #a6752a;          /* ochre — caution */
+  --warn-soft: #f1e6d3;
 
-  --line: #2c2660;          /* panel borders */
-  --line-strong: #4a3fa0;
+  --line: #dee2dc;          /* hairline dividers */
+  --line-strong: #c1c7bf;
 
-  /* Type */
-  --font-pixel: "Press Start 2P", "Courier New", monospace; /* HUD / accents, used sparingly */
-  --font-term: "VT323", ui-monospace, "Courier New", monospace; /* readable CRT body */
+  /* Type — IBM Plex pair: Sans for UI/reading, Mono for anything counted or timestamped. */
+  --font-ui: "IBM Plex Sans", -apple-system, sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, "SF Mono", monospace;
 
-  --text-2xs: 0.5rem;   /* pixel labels (Press Start 2P runs large) */
-  --text-xs: 0.625rem;
-  --text-sm: 0.75rem;
-  --text-term: 1.125rem; /* VT323 body — set large; the face is small per em */
-  --text-term-lg: 1.375rem;
-  --text-hud: 1rem;
-  --text-hud-lg: 1.75rem;
+  --text-2xs: 0.6875rem;
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.9375rem;
+  --text-lg: 1.0625rem;
+  --text-stat: 1.875rem;
+  --text-stat-lg: 2.25rem;
 
   /* Layout */
   --space-1: 4px;
@@ -45,12 +45,11 @@
   --space-6: 32px;
   --space-7: 48px;
 
-  /* 8-bit look: zero radius, hard offset "pixel" shadows (no blur). */
-  --radius: 0px;
-  --px: 3px;                                   /* base pixel unit for borders */
-  --shadow-pixel: 4px 4px 0 0 var(--bg-inset);
-  --shadow-pixel-cyan: 4px 4px 0 0 var(--cyan-dim);
+  --radius-sm: 4px;
+  --radius: 8px;
+  --line-w: 1px;
+  --shadow-pop: 0 8px 24px -8px rgba(16, 24, 28, 0.16);
 
-  --motion-fast: 90ms;
-  --motion-base: 160ms;
+  --motion-fast: 100ms;
+  --motion-base: 180ms;
 }

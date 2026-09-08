@@ -33,6 +33,7 @@ For EACH transaction, clearly state:
  - Transaction ID
  - Transaction Time
  - Amount
+ - Risk probability (the transaction's fraud_probability field, as a percentage; say "not available" if it is null)
  - Impact (use the analysis already provided to you)
  - Relevant Features (V1, V2, etc.)
 Do not filter out any results. Include all {top_k} transactions retrieved regardless of whether they are anomalous.

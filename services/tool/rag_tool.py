@@ -28,6 +28,7 @@ class RAGQueryEngine:
                 "event_timestamp": str(r["event_timestamp"]),
                 "amount": float(r["amount"]),
                 "is_fraud": bool(r["is_fraud"]),
+                "fraud_probability": (float(r["fraud_probability"]) if r["fraud_probability"] is not None else None),
                 "features": r["features"],
             }
             for r in records
@@ -44,6 +45,7 @@ class RAGQueryEngine:
                     TransactionModel.amount,
                     TransactionModel.event_timestamp,
                     TransactionModel.is_fraud,
+                    TransactionModel.fraud_probability,
                     TransactionModel.features,
                 )
                 .join(EmbeddingModel, TransactionModel.transaction_id == EmbeddingModel.transaction_id)
@@ -65,6 +67,7 @@ class RAGQueryEngine:
                     TransactionModel.amount,
                     TransactionModel.event_timestamp,
                     TransactionModel.is_fraud,
+                    TransactionModel.fraud_probability,
                     TransactionModel.features,
                 )
                 .where(TransactionModel.is_fraud.is_(True))

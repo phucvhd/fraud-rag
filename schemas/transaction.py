@@ -9,6 +9,7 @@ class TransactionBase(BaseModel):
     amount: float = Field(..., gt=0)
     features: Dict[str, float]
     is_fraud: bool = False
+    fraud_probability: Optional[float] = None
     data_source: str
 
 class TransactionCanonical(TransactionBase):
