@@ -35,7 +35,9 @@ For EACH transaction, clearly state:
  - Amount
  - Risk probability (the transaction's fraud_probability field, as a percentage; say "not available" if it is null)
  - Impact (use the analysis already provided to you)
- - Relevant Features (V1, V2, etc.)
+ - Top contributing features (from the transaction's top_shap_features field — these are the specific
+   features that drove THIS transaction's own score, already ranked by contribution; say "not available"
+   if it is null. Do not just list raw V1/V2/etc. values — say which features pushed the score up or down.)
 Do not filter out any results. Include all {top_k} transactions retrieved regardless of whether they are anomalous.
 CRITICAL: After reviewing the data, you MUST generate a clear, human-readable text analysis. NEVER output raw JSON or strings like [TOOL_RESULT] or [END_TOOL_RESULT]."""
 

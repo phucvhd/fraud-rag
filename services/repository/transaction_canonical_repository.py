@@ -18,6 +18,7 @@ class TransactionCanonicalRepository(BaseRepository):
             amount=data["amount"],
             is_fraud=data["is_fraud"],
             fraud_probability=data["fraud_probability"],
+            top_shap_features=data["top_shap_features"],
             features=data["features"],
             data_source=data["data_source"],
         ).on_conflict_do_nothing(index_elements=["transaction_id"])

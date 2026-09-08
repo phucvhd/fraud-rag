@@ -10,6 +10,7 @@ class TransactionBase(BaseModel):
     features: Dict[str, float]
     is_fraud: bool = False
     fraud_probability: Optional[float] = None
+    top_shap_features: Optional[Dict[str, float]] = None
     data_source: str
 
 class TransactionCanonical(TransactionBase):

@@ -20,7 +20,9 @@ def context_lookup(query: str, top_k: int) -> str:
     """Semantic search for transactions by natural language similarity
     (e.g., 'find transactions over 1000 EUR'). Returns a JSON list of transactions
     with their amount, time, is_fraud label, fraud_probability (the model's risk
-    score, 0-1, may be null for older/unscored transactions) and raw features.
+    score, 0-1, may be null for older/unscored transactions), top_shap_features
+    (the specific features that most drove THIS transaction's own score, ranked
+    by contribution — may be null) and raw features.
     Do NOT use this for anomaly/fraud/suspicious-transaction questions — use
     find_known_fraud instead, since this tool does not filter by the real fraud label.
     Always specify 'top_k' to define how many results to return."""
@@ -40,7 +42,9 @@ def find_known_fraud(top_k: int) -> str:
     transactions. Returns the most recent transactions confirmed as fraudulent
     (is_fraud = true) directly from the database as a JSON list, ordered by recency,
     each including fraud_probability (the model's risk score, 0-1, may be null for
-    older/unscored transactions). This is ground truth, not a similarity search.
+    older/unscored transactions) and top_shap_features (the specific features that
+    most drove THIS transaction's own score, ranked by contribution — may be null).
+    This is ground truth, not a similarity search.
     Always specify 'top_k' to define how many results to return."""
     try:
         logger.info("Start retrieving known fraud transactions")

@@ -38,6 +38,7 @@ def test_fraud_lookup_returns_serialized_json(mock_config_loader, mock_get_engin
         "event_timestamp": "2026-03-27 15:30:26",
         "is_fraud": True,
         "fraud_probability": Decimal("0.92310"),
+        "top_shap_features": {"V2": -0.9, "Time": -0.5},
         "features": {"V1": 4.4045},
     }]
     engine, _ = _build_engine(mock_get_engine, mock_config_loader, records)
@@ -48,6 +49,7 @@ def test_fraud_lookup_returns_serialized_json(mock_config_loader, mock_get_engin
     assert payload[0]["is_fraud"] is True
     assert payload[0]["amount"] == 218.09
     assert payload[0]["fraud_probability"] == pytest.approx(0.9231)
+    assert payload[0]["top_shap_features"] == {"V2": -0.9, "Time": -0.5}
     assert payload[0]["features"] == {"V1": 4.4045}
 
 
@@ -60,6 +62,7 @@ def test_fraud_lookup_serializes_null_probability(mock_config_loader, mock_get_e
         "event_timestamp": "2026-03-27 15:30:26",
         "is_fraud": True,
         "fraud_probability": None,
+        "top_shap_features": None,
         "features": {"V1": 4.4045},
     }]
     engine, _ = _build_engine(mock_get_engine, mock_config_loader, records)
@@ -68,6 +71,7 @@ def test_fraud_lookup_serializes_null_probability(mock_config_loader, mock_get_e
     payload = json.loads(result)
 
     assert payload[0]["fraud_probability"] is None
+    assert payload[0]["top_shap_features"] is None
 
 
 @patch("services.tool.rag_tool.get_engine")
