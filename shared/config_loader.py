@@ -56,6 +56,16 @@ class CorrelationAnalysisConfig(BaseModel):
     thresholds: dict[str, float]
 
 
+class MonitoringConfig(BaseModel):
+    """LLM tracing. Defaults are set here so config files keep loading without
+    a `monitoring:` block.
+    """
+
+    # Redact amounts and raw features before traces leave the process. Only
+    # turn off where the Langfuse instance is as trusted as the database.
+    mask_sensitive_data: bool = True
+
+
 class ApplicationConfig(BaseModel):
     database: DatabaseConfig
     kafka: KafkaConfig
@@ -64,6 +74,7 @@ class ApplicationConfig(BaseModel):
     dashboard: DashboardConfig
     correlation_analysis: CorrelationAnalysisConfig
     mcp_servers: MCPServersConfig
+    monitoring: MonitoringConfig = MonitoringConfig()
 
 
 class ConfigLoader:

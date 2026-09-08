@@ -7,10 +7,18 @@ from pydantic import BaseModel, Field
 class QueryRequest(BaseModel):
     prompt: str
     top_k: int = Field(default=5, gt=0, le=50)
+    # Passed through to the trace so production traffic can be grouped per
+    # conversation and per analyst — without them, per-user cost and error
+    # rates are not answerable.
+    session_id: str | None = Field(default=None, max_length=200)
+    user_id: str | None = Field(default=None, max_length=200)
 
 
 class QueryResponse(BaseModel):
     answer: str
+    # Lets a user reporting a bad answer be matched to the trace that produced
+    # it. Null when tracing is disabled or failed to start.
+    trace_id: str | None = None
 
 
 class TimeseriesBucket(BaseModel):

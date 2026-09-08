@@ -6,6 +6,9 @@ export interface ChatEntry {
   content: string;
   timestamp: string;
   topK?: number;
+  // Langfuse trace that produced this answer, so a user reporting a bad answer
+  // can quote an id that finds the exact request.
+  traceId?: string;
   raw?: unknown;
 }
 

@@ -170,6 +170,59 @@ Key sections:
 - `llm` — provider/base_url/model for the agent's chat client (defaults to a local Ollama or LM Studio endpoint; swap to OpenAI by uncommenting the block in `application-prod.yaml`)
 - `correlation_analysis` — feature→correlation map and risk thresholds used by `interpret_fraud_features`
 - `mcp_servers` — SSE URLs the agent connects to
+- `monitoring` — `mask_sensitive_data`: redact amounts and raw features from traces (see below)
+
+## LLM tracing
+
+Every `/ask` request produces one Langfuse trace:
+
+```
+TRACE  fraud_investigation            (agent)      prompt, top_k, session_id, user_id
+  ├─ retrieval                        (retriever)  n_returned, similarity {mean,min,max}
+  ├─ agent_iteration_*                (generation) auto-instrumented, token usage
+  └─ tool spans                       (tool)       auto-instrumented
+```
+
+The LangChain `CallbackHandler` creates the generation and tool spans. This
+codebase adds the root span, the trace-level attributes, and the `retrieval`
+span carrying what the auto-instrumentation cannot see — how many cases came
+back and how similar they were (`services/monitoring/metrics.py`).
+
+Three things make the traces usable in production:
+
+- **`trace_id` is returned from `/ask`** and shown in the dashboard next to each
+  answer. Without it, "this answer is wrong" is unactionable — there is no way
+  to find the request again.
+- **`session_id` / `user_id`** are accepted on `/ask` and propagated to the
+  trace, so cost and error rates are answerable per sitting and per analyst.
+  The dashboard sends a random opaque `session_id` it keeps in localStorage.
+- **`environment`** is derived from `APP_ENV` (`prod`, else `local`), so dev
+  experiments and production traffic do not land in the same bucket.
+
+### Masking
+
+Traces would otherwise carry the full retrieval payload — amounts and all 28
+V-features per transaction — to a third-party service.
+`services/monitoring/masking.py` redacts `amount`, `features`,
+`top_shap_features` and `v_features` wherever they appear, including inside the
+JSON *string* that tool results arrive as. Two hooks are needed: `mask` for
+spans created through the SDK, and `mask_otel_spans` for the LangChain
+handler's spans, which `mask` does not reach and which carry the raw payload.
+
+Limitation: only structured fields are redacted. The agent's final prose answer
+quotes amounts in free text and cannot be masked reliably, so it still reaches
+Langfuse. Self-host if that is unacceptable. Turn masking off with
+`monitoring.mask_sensitive_data: false` only where the Langfuse instance is as
+trusted as the database.
+
+Tracing is enabled by the `LANGFUSE_*` env vars; with them unset the client
+disables itself with a warning and answers are served untraced. Every tracing
+call is wrapped — a Langfuse outage degrades to untraced answers, never to
+failed ones.
+
+Not covered yet: alerting (Langfuse is for inspection, not thresholds — error
+rate, p95 latency and empty-answer rate belong in Prometheus/Grafana) and
+regression testing against a fixed question set before prompt or model changes.
 
 ## API
 

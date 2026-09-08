@@ -5,17 +5,39 @@ const INJECT_URL = import.meta.env.VITE_INJECT_URL ?? "";
 
 export class ApiError extends Error {}
 
-export async function askAgent(prompt: string, topK: number): Promise<{ answer: string; raw: unknown }> {
+const SESSION_KEY = "fraud-ledger.session-id";
+
+/** Stable per-browser id sent with every agent request so all questions from
+ * one sitting group into a single Langfuse session. Not an identity: it is a
+ * random opaque value, and it resets if storage is cleared. */
+function sessionId(): string | undefined {
+  try {
+    let id = localStorage.getItem(SESSION_KEY);
+    if (!id) {
+      id = `sess-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+      localStorage.setItem(SESSION_KEY, id);
+    }
+    return id;
+  } catch {
+    // Private browsing or storage disabled — traces just won't be grouped.
+    return undefined;
+  }
+}
+
+export async function askAgent(
+  prompt: string,
+  topK: number,
+): Promise<{ answer: string; traceId?: string; raw: unknown }> {
   const resp = await fetch(`${API_BASE}/ask`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ prompt, top_k: topK }),
+    body: JSON.stringify({ prompt, top_k: topK, session_id: sessionId() }),
   });
   const data = await resp.json().catch(() => null);
   if (!resp.ok) {
     throw new ApiError(data?.detail ?? `Agent request failed (${resp.status})`);
   }
-  return { answer: data?.answer ?? "No answer returned.", raw: data };
+  return { answer: data?.answer ?? "No answer returned.", traceId: data?.trace_id ?? undefined, raw: data };
 }
 
 export async function fetchTimeseries(start: Date, end: Date): Promise<TimeseriesResponse> {

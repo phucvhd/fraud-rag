@@ -54,10 +54,10 @@ export default function AgentView() {
     setPending(true);
 
     try {
-      const { answer, raw } = await askAgent(trimmed, topK);
+      const { answer, traceId, raw } = await askAgent(trimmed, topK);
       setHistory((h) => [
         ...h,
-        { id: makeId(), role: "assistant", content: answer, timestamp: new Date().toISOString(), topK, raw },
+        { id: makeId(), role: "assistant", content: answer, timestamp: new Date().toISOString(), topK, traceId, raw },
       ]);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Something went wrong. Try again.";

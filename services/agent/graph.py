@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+from dataclasses import dataclass
 
 from langgraph.graph import StateGraph, START
 from langgraph.graph.state import CompiledStateGraph
@@ -13,12 +14,26 @@ from langfuse.langchain import CallbackHandler
 from schemas.dto import QueryRequest
 from services.agent.state import GraphState
 from services.agent.agent import LLMAgent
+from services.monitoring.metrics import count_agent_iterations, sum_token_usage, summarize_retrieval
+from services.monitoring.tracing import (
+    RETRIEVAL_MODE_KNOWN_FRAUD,
+    RETRIEVAL_MODE_NONE,
+    RETRIEVAL_MODE_VECTOR,
+    InvestigationTracer,
+)
 from shared.config_loader import config_loader
 
 logger = logging.getLogger(__name__)
 
-_LOOKUP_TOOLS = {"context_lookup", "find_known_fraud"}
+_CONTEXT_TOOL = "context_lookup"
+_KNOWN_FRAUD_TOOL = "find_known_fraud"
+_LOOKUP_TOOLS = {_CONTEXT_TOOL, _KNOWN_FRAUD_TOOL}
 _ANALYSIS_TOOL = "interpret_fraud_features"
+
+_RETRIEVAL_MODES = {
+    _CONTEXT_TOOL: RETRIEVAL_MODE_VECTOR,
+    _KNOWN_FRAUD_TOOL: RETRIEVAL_MODE_KNOWN_FRAUD,
+}
 
 _AGENT_INSTRUCTIONS = """\
 {prompt}
@@ -44,6 +59,15 @@ Do not filter out any results. Include all {top_k} transactions retrieved regard
 CRITICAL: After reviewing the data, you MUST generate a clear, human-readable text analysis. NEVER output raw JSON or strings like [TOOL_RESULT] or [END_TOOL_RESULT]."""
 
 
+@dataclass(frozen=True)
+class InvestigationResult:
+    answer: str
+    # Returned to the caller so a user reporting a bad answer can be matched to
+    # the trace that produced it. Without this, production reports are
+    # unactionable: there is no way to find the request again.
+    trace_id: str | None
+
+
 class FraudInspectorGraph:
     def __init__(self, agent: LLMAgent):
         cfg = config_loader.load()
@@ -60,7 +84,17 @@ class FraudInspectorGraph:
         })
         self.graph: CompiledStateGraph | None = None
         self._build_lock = asyncio.Lock()
-        # Env-configured (LANGFUSE_PUBLIC_KEY/SECRET_KEY/BASE_URL); no-ops if unset.
+        # Constructed before CallbackHandler on purpose: the tracer registers
+        # the Langfuse client (with masking and environment set), and the
+        # handler picks up whichever client is already registered.
+        self._tracer = InvestigationTracer(
+            model=cfg.llm.model_name,
+            provider=cfg.llm.provider,
+            mask_sensitive_data=cfg.monitoring.mask_sensitive_data,
+        )
+        # Env-configured (LANGFUSE_PUBLIC_KEY/SECRET_KEY/BASE_URL); no-ops if
+        # unset. Gives one generation span per agent turn and one span per tool
+        # call for free.
         self._langfuse_handler = CallbackHandler()
 
     async def build(self) -> CompiledStateGraph:
@@ -99,7 +133,14 @@ class FraudInspectorGraph:
                 return {
                     "messages": [
                         ToolMessage(content=combined, name=_ANALYSIS_TOOL, tool_call_id="auto-analyze")
-                    ]
+                    ],
+                    # Carried out of the graph so run() can build the retriever
+                    # span. Last lookup wins if the agent retrieves twice.
+                    "retrieved": transactions,
+                    "retrieval_mode": _RETRIEVAL_MODES.get(
+                        getattr(last_message, "name", None), RETRIEVAL_MODE_NONE
+                    ),
+                    "retrieval_tool": getattr(last_message, "name", None) or "unknown",
                 }
 
             def route_after_tools(state: GraphState):
@@ -122,15 +163,54 @@ class FraudInspectorGraph:
             self.graph = workflow.compile()
             return self.graph
 
-    async def run(self, request: QueryRequest) -> str:
+    async def run(self, request: QueryRequest) -> InvestigationResult:
         if not self.graph:
             await self.build()
 
         enriched_prompt = _AGENT_INSTRUCTIONS.format(prompt=request.prompt, top_k=request.top_k)
         initial_state = {"messages": [HumanMessage(content=enriched_prompt)]}
 
-        result = await self.graph.ainvoke(
-            initial_state,
-            config={"callbacks": [self._langfuse_handler]},
-        )
-        return result["messages"][-1].content
+        with self._tracer.investigation(
+            prompt=request.prompt,
+            top_k=request.top_k,
+            session_id=request.session_id,
+            user_id=request.user_id,
+        ) as trace:
+            result = await self.graph.ainvoke(
+                initial_state,
+                config={"callbacks": [self._langfuse_handler]},
+            )
+            answer = result["messages"][-1].content
+            self._record_trace_metadata(result, answer, trace)
+            return InvestigationResult(answer=answer, trace_id=trace.trace_id)
+
+    def _record_trace_metadata(self, result: dict, answer: str, trace) -> None:
+        """Retriever summary and trace-level counters.
+
+        Wrapped whole: tracing is not allowed to turn a successful investigation
+        into a failed request.
+        """
+        try:
+            retrieved = [r for r in (result.get("retrieved") or []) if isinstance(r, dict)]
+            retrieval_mode = result.get("retrieval_mode") or RETRIEVAL_MODE_NONE
+            retrieval_tool = result.get("retrieval_tool") or "none"
+            summary = summarize_retrieval(retrieved)
+
+            # A metadata span rather than a timed one: real retrieval timings
+            # come from the auto-instrumented MCP tool call, which cannot see
+            # the rows it returned.
+            with trace.retrieval_span(retrieval_tool) as record_retrieval:
+                record_retrieval({**summary, "retrieval_mode": retrieval_mode})
+
+            trace.finish(
+                answer=answer,
+                trace_metadata={
+                    "retrieval_mode": retrieval_mode,
+                    "n_returned": summary["n_returned"],
+                    "n_missing_ml_score": summary["n_missing_ml_score"],
+                    "n_iterations": count_agent_iterations(result["messages"]),
+                    "token_usage": sum_token_usage(result["messages"]),
+                },
+            )
+        except Exception:
+            logger.error("Failed to record trace metadata for investigation", exc_info=True)

@@ -31,6 +31,12 @@ class RAGQueryEngine:
                 "fraud_probability": (float(r["fraud_probability"]) if r["fraud_probability"] is not None else None),
                 "top_shap_features": r["top_shap_features"],
                 "features": r["features"],
+                # None on the ground-truth path, which is a SQL filter rather
+                # than a vector search — a 0.0 there would read as total
+                # retrieval failure on the monitoring dashboard.
+                "similarity": (
+                    1.0 - float(r["cosine_distance"]) if r.get("cosine_distance") is not None else None
+                ),
             }
             for r in records
         ]
@@ -49,6 +55,12 @@ class RAGQueryEngine:
                     TransactionModel.fraud_probability,
                     TransactionModel.top_shap_features,
                     TransactionModel.features,
+                    # Reported for the retriever span only. Ranking still uses
+                    # l2 distance so adding observability does not change which
+                    # cases the agent sees; cosine is selected because these
+                    # embeddings are not L2-normalised, which makes distance
+                    # itself uninterpretable as a similarity.
+                    EmbeddingModel.embedding.cosine_distance(query_vector).label("cosine_distance"),
                 )
                 .join(EmbeddingModel, TransactionModel.transaction_id == EmbeddingModel.transaction_id)
                 .order_by(EmbeddingModel.embedding.l2_distance(query_vector))

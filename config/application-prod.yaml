@@ -63,3 +63,8 @@ mcp_servers:
     url: "http://mcp-analysis:8004/sse"
   repository:
     url: "http://mcp-repository:8003/sse"
+
+monitoring:
+  # Redact amounts and raw V-features from traces before they leave the process.
+  # Turn off only if the Langfuse instance is as trusted as the database itself.
+  mask_sensitive_data: true

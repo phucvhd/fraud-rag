@@ -78,8 +78,9 @@ def health_check():
 async def ask_anomaly_analysis(query: QueryRequest, request: Request):
     try:
         logger.info("Received anomaly analysis request")
-        answer = await request.app.state.inspector.run(query)
-        return QueryResponse(answer=answer)
+        result = await request.app.state.inspector.run(query)
+        logger.info("Answered analysis request, trace_id=%s", result.trace_id)
+        return QueryResponse(answer=result.answer, trace_id=result.trace_id)
     except Exception:
         logger.exception("Anomaly analysis request failed")
         raise HTTPException(status_code=500, detail="Failed to process the analysis request.")
