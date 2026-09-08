@@ -27,19 +27,18 @@ class EmbeddingWorker:
                     time.sleep(2)
                     continue
 
-                for job in jobs:
-                    vector, txt = self.processor.create_embedding(
-                        job["amount"],
-                        job["features"],
-                        job["is_fraud"],
-                    )
-                    self.repo.save(TransactionEmbedding(
+                embeddings = self.processor.create_embeddings(jobs)
+                records = [
+                    TransactionEmbedding(
                         transaction_id=job["transaction_id"],
                         embedding=vector,
                         embedding_text=txt,
                         embedding_model=self.cfg.embedding.model_name,
-                    ))
-                    logger.info("Embedded: %s", job["transaction_id"])
+                    )
+                    for job, (vector, txt) in zip(jobs, embeddings)
+                ]
+                self.repo.save_many(records)
+                logger.info("Embedded %d transactions", len(records))
             except Exception as e:
                 logger.error("Error: %s", e)
                 time.sleep(5)

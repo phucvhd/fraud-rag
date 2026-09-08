@@ -119,7 +119,7 @@ alembic upgrade head
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
-./scripts.sh start   # consumer + embedder worker (background) + API (foreground, :8000)
+./scripts.sh start   # consumer + embedder worker (background) + API (foreground, :8001)
 ```
 
 Or run any single service directly, e.g.:
@@ -139,7 +139,7 @@ points everything at `localhost`, matching this workflow.
 ```bash
 cd frontend
 npm install
-cp .env.example .env.local   # set VITE_API_BASE_URL if the API isn't on :8000
+cp .env.example .env.local   # set VITE_API_BASE_URL if the API isn't on :8001
 npm run dev                  # http://localhost:5173
 ```
 

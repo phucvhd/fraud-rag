@@ -12,7 +12,7 @@ case "$1" in
     "start")
         python -m services.consumer.consumer &
         python -m services.embedder.worker &
-        uvicorn services.api.main:app --port 8000
+        uvicorn services.api.main:app --port 8001
         ;;
     "test")
         pytest test/ -s

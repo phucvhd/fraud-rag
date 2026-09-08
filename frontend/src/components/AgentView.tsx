@@ -34,7 +34,7 @@ export default function AgentView() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    transcriptRef.current?.scrollTo({ top: transcriptRef.current.scrollHeight, behavior: "smooth" });
+    transcriptRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [history, pending]);
 
   useEffect(() => {
@@ -83,10 +83,13 @@ export default function AgentView() {
 
   return (
     <section className="agent-view">
+      <div className="agent-view__header">
+        <h2 className="agent-view__title">Ask</h2>
+        <p className="agent-view__subtitle">Ask the agent about specific transactions or patterns.</p>
+      </div>
       <div className="agent-view__transcript" ref={transcriptRef}>
         {history.length === 0 && (
           <div className="agent-view__empty">
-            <span className="eyebrow">▚ NEW CASE FILE</span>
             <p className="agent-view__empty-lead">
               Ask about flagged activity. The agent pulls similar past transactions and scores their features before
               answering.
@@ -95,7 +98,7 @@ export default function AgentView() {
             <div className="agent-view__examples">
               {EXAMPLE_PROMPTS.map((ex) => (
                 <button key={ex} type="button" className="agent-view__example" onClick={() => void submit(ex)}>
-                  &gt; {ex}
+                  {ex}
                 </button>
               ))}
             </div>
@@ -105,17 +108,12 @@ export default function AgentView() {
           <ChatMessage key={entry.id} entry={entry} />
         ))}
         {pending && (
-          <div className="report-slip report-slip--pending">
-            <div className="report-slip__tab" aria-hidden="true">
-              AGENT
-            </div>
-            <div className="report-slip__body">
-              <span className="eyebrow">Scanning ledger…</span>
-              <div className="agent-view__typing" aria-label="Agent is thinking">
-                <span />
-                <span />
-                <span />
-              </div>
+          <div className="finding finding--pending">
+            <span className="eyebrow">Scanning ledger…</span>
+            <div className="agent-view__typing" aria-label="Agent is thinking">
+              <span />
+              <span />
+              <span />
             </div>
           </div>
         )}
@@ -140,7 +138,7 @@ export default function AgentView() {
             onClick={() => setHistory([])}
             disabled={history.length === 0 || pending}
           >
-            Clear history
+            Clear conversation
           </button>
         </div>
         <div className="composer__row">
@@ -154,8 +152,8 @@ export default function AgentView() {
             onChange={(e) => setPrompt(e.target.value)}
             disabled={pending}
           />
-          <button type="submit" className="composer__send" disabled={pending || !prompt.trim()}>
-            {pending ? "…" : "Ask ▶"}
+          <button type="submit" className="btn btn--primary composer__send" disabled={pending || !prompt.trim()}>
+            {pending ? "Asking…" : "Ask"}
           </button>
         </div>
       </form>

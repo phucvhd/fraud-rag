@@ -22,3 +22,16 @@ export interface TimeseriesResponse {
   total_fraud: number;
   total_normal: number;
 }
+
+export interface TransactionRecord {
+  transaction_id: string;
+  event_timestamp: string;
+  amount: number;
+  is_fraud: boolean;
+  data_source: string;
+}
+
+export interface TransactionListResponse {
+  data: TransactionRecord[];
+  total: number;
+}

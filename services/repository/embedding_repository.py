@@ -48,6 +48,23 @@ class TransactionEmbeddingRepository(BaseRepository):
         with self.engine.begin() as conn:
             conn.execute(stmt)
 
+    def save_many(self, embeddings: list[TransactionEmbedding]) -> None:
+        """One bulk insert/commit for a whole batch, instead of one round-trip per row."""
+        if not embeddings:
+            return
+        values = [
+            {
+                "transaction_id": data["transaction_id"],
+                "embedding": data["embedding"],
+                "embedding_text": data["embedding_text"],
+                "embedding_model": data["embedding_model"],
+            }
+            for data in (e.model_dump() for e in embeddings)
+        ]
+        stmt = insert(EmbeddingModel).values(values).on_conflict_do_nothing(index_elements=["transaction_id"])
+        with self.engine.begin() as conn:
+            conn.execute(stmt)
+
     def upsert(self, embedding: TransactionEmbedding) -> None:
         data = embedding.model_dump()
         values = {

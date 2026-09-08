@@ -14,31 +14,11 @@ body {
 
 body {
   background: var(--bg);
-  color: var(--fg);
-  font-family: var(--font-term);
-  font-size: var(--text-term);
-  line-height: 1.35;
-  /* Keep pixel fonts crisp — no smoothing softening the edges. */
-  -webkit-font-smoothing: none;
-  font-smooth: never;
-}
-
-/* Signature: faint CRT scanlines + vignette over the whole console. */
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 100;
-  background:
-    repeating-linear-gradient(
-      to bottom,
-      rgba(0, 0, 0, 0) 0,
-      rgba(0, 0, 0, 0) 2px,
-      rgba(0, 0, 0, 0.16) 3px,
-      rgba(0, 0, 0, 0.16) 4px
-    ),
-    radial-gradient(ellipse at center, transparent 60%, rgba(0, 0, 0, 0.35) 100%);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--text-base);
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
 }
 
 #root {
@@ -59,25 +39,64 @@ button {
 }
 
 :focus-visible {
-  outline: var(--px) solid var(--amber);
+  outline: 2px solid var(--brand);
   outline-offset: 2px;
 }
 
-/* Pixel HUD label */
+/* Small dim label, used above a value or beside a control. */
 .eyebrow {
-  font-family: var(--font-pixel);
-  font-size: var(--text-2xs);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--fg-dim);
-  line-height: 1.6;
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--ink-dim);
+  line-height: 1.4;
 }
 
-.term {
-  font-family: var(--font-term);
+.data {
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
 }
 
-/* Chunky retro scrollbars */
+/* Shared button kit — one primary (navy) and one ghost (bordered), reused across views. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-4);
+  border: var(--line-w) solid transparent;
+  transition: background var(--motion-fast), border-color var(--motion-fast), color var(--motion-fast);
+}
+
+.btn--primary {
+  background: var(--brand);
+  color: #fff;
+}
+
+.btn--primary:not(:disabled):hover {
+  background: #1a2e4a;
+}
+
+.btn--ghost {
+  background: var(--bg-panel);
+  border-color: var(--line-strong);
+  color: var(--ink-dim);
+}
+
+.btn--ghost:not(:disabled):hover {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--line-strong) transparent;
@@ -88,10 +107,11 @@ button {
 }
 *::-webkit-scrollbar-thumb {
   background: var(--line-strong);
+  border-radius: 6px;
   border: 2px solid var(--bg);
 }
 *::-webkit-scrollbar-track {
-  background: var(--bg-inset);
+  background: transparent;
 }
 
 .visually-hidden {
@@ -108,9 +128,5 @@ button {
   *::after {
     animation-duration: 0.001ms !important;
     transition-duration: 0.001ms !important;
-  }
-  /* Drop the scanline shimmer entirely for reduced-motion users. */
-  body::before {
-    background: radial-gradient(ellipse at center, transparent 60%, rgba(0, 0, 0, 0.35) 100%);
   }
 }

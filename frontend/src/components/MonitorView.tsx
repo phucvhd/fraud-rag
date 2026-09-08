@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { fetchTimeseries, injectConfigured, injectTransactions } from "../api/client";
 import type { TimeseriesResponse } from "../types";
 import MiniBarChart from "./MiniBarChart";
+import TransactionTable from "./TransactionTable";
 import "./MonitorView.css";
 
 function floor5(d: Date): Date {
@@ -111,9 +112,9 @@ export default function MonitorView() {
     setInjectStatus(null);
     try {
       await injectTransactions(duration);
-      setInjectStatus({ ok: true, message: `Injected ${duration}s of traffic — refresh to see it land.` });
+      setInjectStatus({ ok: true, message: `Sent ${duration}s of test traffic — refresh to see it land.` });
     } catch (err) {
-      setInjectStatus({ ok: false, message: err instanceof Error ? err.message : "Inject failed." });
+      setInjectStatus({ ok: false, message: err instanceof Error ? err.message : "Couldn't send test traffic." });
     } finally {
       setInjecting(false);
     }
@@ -124,108 +125,111 @@ export default function MonitorView() {
   const totalNormal = result?.total_normal ?? 0;
   const fraudRateNum = totalTx > 0 ? (totalFraud / totalTx) * 100 : 0;
   const fraudRate = fraudRateNum.toFixed(1);
-  const fraudColor = fraudRateNum >= 5 ? "var(--red)" : fraudRateNum >= 1 ? "var(--amber)" : "var(--green)";
+  const fraudColor = fraudRateNum >= 5 ? "var(--fraud)" : fraudRateNum >= 1 ? "var(--warn)" : "var(--normal)";
   const buckets = result?.data ?? [];
   const ticks = buckets.map((b) => b.bucket);
   const hasData = buckets.length > 0;
 
   return (
     <section className="monitor-view">
-      <div className="monitor-toolbar">
-        <div className="monitor-presets" role="group" aria-label="Quick ranges">
-          {RANGES.map((r) => (
-            <button
-              key={r.label}
-              type="button"
-              className={`monitor-preset ${!endLocked && rangeMinutes === r.minutes ? "is-active" : ""}`}
-              onClick={() => applyRange(r.minutes)}
-            >
-              {r.label}
-            </button>
-          ))}
-        </div>
-        <button type="button" className="monitor-refresh" onClick={refresh} disabled={loading}>
-          {loading ? "⟳ Loading…" : "⟳ Refresh"}
-        </button>
-      </div>
-
-      <div className="monitor-row monitor-row--range">
-        <label className="monitor-field">
-          <span className="eyebrow">Start</span>
-          <input
-            type="datetime-local"
-            step={300}
-            value={toInputValue(start)}
-            onChange={(e) => e.target.value && (setStart(new Date(e.target.value)), setEndLocked(true))}
-          />
-        </label>
-        <span className="monitor-arrow" aria-hidden="true">
-          →
-        </span>
-        <label className="monitor-field">
-          <span className="eyebrow">End</span>
-          <input
-            type="datetime-local"
-            step={300}
-            value={toInputValue(end)}
-            onChange={(e) => {
-              if (!e.target.value) return;
-              setEnd(new Date(e.target.value));
-              setEndLocked(true);
-            }}
-          />
-        </label>
-      </div>
-
-      {error ? (
-        <p className="monitor-error">✕ {error}</p>
-      ) : (
-        <p className="monitor-caption">
-          {lastRefreshed ? `Updated ${lastRefreshed.toLocaleTimeString()}` : "Loading…"}
-          {endLocked ? " · fixed range" : " · live, auto-refreshing every 30s"}
-        </p>
-      )}
-
-      <div className="monitor-stats">
-        <div className="monitor-stat">
-          <span className="monitor-stat__value">{totalTx.toLocaleString()}</span>
+      <div className="ledger-strip">
+        <div className="ledger-stat">
+          <span className="ledger-stat__value data">{totalTx.toLocaleString()}</span>
           <span className="eyebrow">Transactions</span>
         </div>
-        <div className="monitor-stat">
-          <span className="monitor-stat__value" style={{ color: "var(--red)" }}>
+        <div className="ledger-stat">
+          <span className="ledger-stat__value data" style={{ color: "var(--fraud)" }}>
             {totalFraud.toLocaleString()}
           </span>
-          <span className="eyebrow">Fraud</span>
+          <span className="eyebrow">Flagged as fraud</span>
         </div>
-        <div className="monitor-stat">
-          <span className="monitor-stat__value" style={{ color: "var(--green)" }}>
+        <div className="ledger-stat">
+          <span className="ledger-stat__value data" style={{ color: "var(--normal)" }}>
             {totalNormal.toLocaleString()}
           </span>
-          <span className="eyebrow">Normal</span>
+          <span className="eyebrow">Clear</span>
         </div>
-        <div className="monitor-stat">
-          <span className="monitor-stat__value" style={{ color: fraudColor }}>
+        <div className="ledger-stat">
+          <span className="ledger-stat__value data" style={{ color: fraudColor }}>
             {fraudRate}%
           </span>
           <span className="eyebrow">Fraud rate</span>
         </div>
       </div>
 
+      <div className="monitor-toolbar">
+        <div className="segmented" role="group" aria-label="Quick ranges">
+          {RANGES.map((r) => (
+            <button
+              key={r.label}
+              type="button"
+              className={`segmented__item ${!endLocked && rangeMinutes === r.minutes ? "is-active" : ""}`}
+              onClick={() => applyRange(r.minutes)}
+            >
+              {r.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="monitor-range">
+          <label className="monitor-field">
+            <span className="eyebrow">Start</span>
+            <input
+              type="datetime-local"
+              step={300}
+              value={toInputValue(start)}
+              onChange={(e) => e.target.value && (setStart(new Date(e.target.value)), setEndLocked(true))}
+            />
+          </label>
+          <span className="monitor-range__arrow" aria-hidden="true">
+            →
+          </span>
+          <label className="monitor-field">
+            <span className="eyebrow">End</span>
+            <input
+              type="datetime-local"
+              step={300}
+              value={toInputValue(end)}
+              onChange={(e) => {
+                if (!e.target.value) return;
+                setEnd(new Date(e.target.value));
+                setEndLocked(true);
+              }}
+            />
+          </label>
+        </div>
+
+        <button type="button" className="btn btn--ghost monitor-refresh" onClick={refresh} disabled={loading}>
+          {loading ? "Loading…" : "Refresh"}
+        </button>
+      </div>
+
+      {error ? (
+        <p className="monitor-error">{error}</p>
+      ) : (
+        <p className="monitor-caption">
+          {lastRefreshed ? `Updated ${lastRefreshed.toLocaleTimeString()}` : "Loading…"}
+          {endLocked ? " · fixed range" : " · refreshing every 30s"}
+        </p>
+      )}
+
       {hasData ? (
         <div className="monitor-charts">
-          <MiniBarChart label="Transactions / min" values={buckets.map((b) => b.transactions)} ticks={ticks} color="var(--cyan)" />
-          <MiniBarChart label="Fraud" values={buckets.map((b) => b.fraud)} ticks={ticks} color="var(--red)" />
-          <MiniBarChart label="Normal" values={buckets.map((b) => b.normal)} ticks={ticks} color="var(--green)" />
+          <MiniBarChart label="Transactions / min" values={buckets.map((b) => b.transactions)} ticks={ticks} color="var(--brand)" />
+          <MiniBarChart label="Fraud" values={buckets.map((b) => b.fraud)} ticks={ticks} color="var(--fraud)" />
+          <MiniBarChart label="Clear" values={buckets.map((b) => b.normal)} ticks={ticks} color="var(--normal)" />
         </div>
       ) : (
         <div className="monitor-empty">
-          <span className="eyebrow">▚ NO SIGNAL</span>
-          <p>No transactions in this range. Widen the window, or inject some traffic below to see the console light up.</p>
+          <p className="monitor-empty__title">No transactions in this range</p>
+          <p>Widen the window, or send test traffic below to see the chart populate.</p>
         </div>
       )}
 
+      <TransactionTable start={start} end={end} reloadKey={reloadKey} />
+
       <form className="monitor-inject" onSubmit={handleInject}>
-        <span className="eyebrow">Inject test traffic</span>
+        <span className="eyebrow">Send test traffic</span>
         <div className="monitor-inject__row">
           <label className="monitor-field monitor-field--inline">
             <span className="eyebrow">Duration (s)</span>
@@ -239,11 +243,11 @@ export default function MonitorView() {
           </label>
           <button
             type="submit"
-            className="monitor-inject__button"
+            className="btn btn--primary"
             disabled={injecting || !injectConfigured()}
             title={!injectConfigured() ? "No producer configured (VITE_INJECT_URL is unset)." : undefined}
           >
-            {injecting ? "Injecting…" : "Inject ▶"}
+            {injecting ? "Sending…" : "Send"}
           </button>
           {injectStatus && (
             <span className={injectStatus.ok ? "monitor-inject__success" : "monitor-inject__failure"}>

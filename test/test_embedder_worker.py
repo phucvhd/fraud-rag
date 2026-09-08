@@ -35,19 +35,20 @@ def test_embedding_worker_processes_and_saves(mock_config_loader, mock_repo, moc
     }
     repo = mock_repo.return_value
     repo.fetch_pending.return_value = [job]
-    mock_processor.return_value.create_embedding.return_value = ([0.1, 0.2], "embedding text")
+    mock_processor.return_value.create_embeddings.return_value = [([0.1, 0.2], "embedding text")]
 
     stop_event = threading.Event()
-    # Break the loop right after the first job is saved.
-    repo.save.side_effect = lambda embedding: stop_event.set()
+    # Break the loop right after the batch is saved.
+    repo.save_many.side_effect = lambda embeddings: stop_event.set()
 
     worker = EmbeddingWorker(MagicMock())
     worker.start(stop_event)
 
-    mock_processor.return_value.create_embedding.assert_called_once_with(100.0, {"V1": 0.5}, False)
-    repo.save.assert_called_once()
-    saved = repo.save.call_args.args[0]
-    assert str(saved.transaction_id) == job["transaction_id"]
-    assert saved.embedding == [0.1, 0.2]
-    assert saved.embedding_text == "embedding text"
-    assert saved.embedding_model == "test-model"
+    mock_processor.return_value.create_embeddings.assert_called_once_with([job])
+    repo.save_many.assert_called_once()
+    saved = repo.save_many.call_args.args[0]
+    assert len(saved) == 1
+    assert str(saved[0].transaction_id) == job["transaction_id"]
+    assert saved[0].embedding == [0.1, 0.2]
+    assert saved[0].embedding_text == "embedding text"
+    assert saved[0].embedding_model == "test-model"
