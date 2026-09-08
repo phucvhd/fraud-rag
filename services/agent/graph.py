@@ -7,6 +7,8 @@ from langgraph.graph.state import CompiledStateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain_core.messages import HumanMessage, ToolMessage
+from langchain_core.runnables import RunnableConfig
+from langfuse.langchain import CallbackHandler
 
 from schemas.dto import QueryRequest
 from services.agent.state import GraphState
@@ -58,6 +60,8 @@ class FraudInspectorGraph:
         })
         self.graph: CompiledStateGraph | None = None
         self._build_lock = asyncio.Lock()
+        # Env-configured (LANGFUSE_PUBLIC_KEY/SECRET_KEY/BASE_URL); no-ops if unset.
+        self._langfuse_handler = CallbackHandler()
 
     async def build(self) -> CompiledStateGraph:
         async with self._build_lock:
@@ -68,12 +72,12 @@ class FraudInspectorGraph:
             llm_with_tools = self.llm.bind_tools(mcp_tools)
             analysis_tool = next(t for t in mcp_tools if t.name == _ANALYSIS_TOOL)
 
-            async def agent_node(state: GraphState):
+            async def agent_node(state: GraphState, config: RunnableConfig):
                 messages = state["messages"]
-                response = await llm_with_tools.ainvoke(messages)
+                response = await llm_with_tools.ainvoke(messages, config)
                 return {"messages": [response]}
 
-            async def auto_analyze_node(state: GraphState):
+            async def auto_analyze_node(state: GraphState, config: RunnableConfig):
                 last_message = state["messages"][-1]
                 try:
                     transactions = json.loads(last_message.content)
@@ -88,7 +92,7 @@ class FraudInspectorGraph:
                     analysis = await analysis_tool.ainvoke({
                         "v_features": txn.get("features", {}),
                         "is_fraud": txn.get("is_fraud"),
-                    })
+                    }, config)
                     lines.append(f"TransactionId: {txn.get('transaction_id')} -> {analysis}")
 
                 combined = "\n".join(lines) if lines else "No transactions to analyze."
@@ -125,5 +129,8 @@ class FraudInspectorGraph:
         enriched_prompt = _AGENT_INSTRUCTIONS.format(prompt=request.prompt, top_k=request.top_k)
         initial_state = {"messages": [HumanMessage(content=enriched_prompt)]}
 
-        result = await self.graph.ainvoke(initial_state)
+        result = await self.graph.ainvoke(
+            initial_state,
+            config={"callbacks": [self._langfuse_handler]},
+        )
         return result["messages"][-1].content

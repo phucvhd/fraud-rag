@@ -118,6 +118,9 @@ services:
       - APP_ENV=prod
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:8080}
+      - LANGFUSE_PUBLIC_KEY=${LANGFUSE_PUBLIC_KEY}
+      - LANGFUSE_SECRET_KEY=${LANGFUSE_SECRET_KEY}
+      - LANGFUSE_BASE_URL=${LANGFUSE_BASE_URL:-https://cloud.langfuse.com}
     volumes:
       - ./model_cache:/app/model_cache
     depends_on:
