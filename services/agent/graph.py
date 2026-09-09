@@ -1,7 +1,7 @@
 import asyncio
 import json
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from langgraph.graph import StateGraph, START
 from langgraph.graph.state import CompiledStateGraph
@@ -98,6 +98,10 @@ class InvestigationResult:
     # the trace that produced it. Without this, production reports are
     # unactionable: there is no way to find the request again.
     trace_id: str | None
+    # The transactions the agent reasoned over. Not surfaced to /ask (QueryResponse
+    # ignores it); the regression experiment needs it to score the answer against
+    # the data the agent was actually given.
+    retrieved: list = field(default_factory=list)
 
 
 class FraudInspectorGraph:
@@ -212,7 +216,8 @@ class FraudInspectorGraph:
             )
             answer = result["messages"][-1].content
             self._record_trace_metadata(result, answer, trace)
-            return InvestigationResult(answer=answer, trace_id=trace.trace_id)
+            retrieved = [r for r in (result.get("retrieved") or []) if isinstance(r, dict)]
+            return InvestigationResult(answer=answer, trace_id=trace.trace_id, retrieved=retrieved)
 
     def _record_trace_metadata(self, result: dict, answer: str, trace) -> None:
         """Retriever summary and trace-level counters.

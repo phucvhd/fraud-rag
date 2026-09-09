@@ -220,9 +220,52 @@ disables itself with a warning and answers are served untraced. Every tracing
 call is wrapped — a Langfuse outage degrades to untraced answers, never to
 failed ones.
 
+### Regression testing
+
+A fixed question set catches quality regressions before a prompt or model change
+ships, with no human in the loop. The answers are scored *structurally* — the
+agent's job is to retrieve and faithfully present, so the checks in
+`services/monitoring/scorers.py` are deterministic (no LLM judge, no cost, no
+noise):
+
+- `transaction_coverage` — every retrieved transaction is listed (none dropped)
+- `no_hallucinated_ids` — no transaction id the agent never retrieved
+- `risk_score_fidelity` — each quoted risk % matches the payload's `fraud_probability`
+- `no_raw_output` — prose, not a raw JSON / `[TOOL_RESULT]` dump
+
+These cannot see a fluent but unsupported claim ("this is fraud because the same
+card was charged back last week" when no such fact was retrieved). RAGAS
+`faithfulness` (`services/monitoring/ragas_eval.py`) adds that semantic check via
+an LLM judge, and plugs into the *same* experiment as an extra evaluator — the
+two are complementary layers, not alternatives (Langfuse is the harness; RAGAS
+is one scorer plugged into it). It is **off by default**: it is LLM-as-judge and
+only meaningful with a strong judge. With a weak local model it returns noise
+(empirically 0.0 for good and bad answers alike), so enable it only against a
+capable judge:
+
+```bash
+RAGAS_ENABLED=1 \
+RAGAS_JUDGE_BASE_URL=https://api.openai.com/v1 RAGAS_JUDGE_MODEL=gpt-4o \
+RAGAS_JUDGE_API_KEY=sk-... \
+PYTHONPATH=. python scripts/run_regression_experiment.py gpt4o-with-ragas
+```
+
+```bash
+# 1. Upload the fixed question set once (test/fixtures/regression_dataset.json).
+PYTHONPATH=. python scripts/upload_regression_dataset.py
+
+# 2. Run the agent over it and score every answer (needs the full stack up).
+#    Label the run so before/after comparisons line up in the Langfuse UI.
+PYTHONPATH=. python scripts/run_regression_experiment.py llama3-baseline
+```
+
+Each run becomes a Langfuse Experiment; two runs sit side by side and a
+regression shows up as a dropped average score.
+
 Not covered yet: alerting (Langfuse is for inspection, not thresholds — error
 rate, p95 latency and empty-answer rate belong in Prometheus/Grafana) and
-regression testing against a fixed question set before prompt or model changes.
+silent-failure detection (a dead embedder thread leaves traces green; that needs
+a health check, not a trace).
 
 ## API
 
