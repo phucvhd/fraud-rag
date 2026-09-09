@@ -43,6 +43,24 @@
       "input": {"prompt": "Which transactions does the model flag as high risk but that are not confirmed fraud yet?", "top_k": 3},
       "expected_output": {"retrieval_mode": "suspected", "constraints": {"order_by": "risk"}, "notes": "Must route to find_suspected_fraud (score-based, not is_fraud); ordered by risk. The core 'catch before chargeback' query."},
       "metadata": {"intent": "suspected-fraud lookup"}
+    },
+    {
+      "id": "reg-stats-count",
+      "input": {"prompt": "How many transactions are fraudulent in total, and what is the fraud rate?", "top_k": 3},
+      "expected_output": {"expected_tool": "fraud_stats", "constraints": {}, "notes": "Quantitative -> fraud_stats (aggregate numbers, not a list). Verify tool via trace."},
+      "metadata": {"intent": "aggregation"}
+    },
+    {
+      "id": "reg-time-window",
+      "input": {"prompt": "Any suspicious transactions in the last 24 hours?", "top_k": 3},
+      "expected_output": {"expected_tool": "find_suspected_fraud", "expected_args": {"since_hours": 24}, "constraints": {"order_by": "risk"}, "notes": "'in the last 24 hours' -> since_hours=24. Verify tool + since_hours via trace."},
+      "metadata": {"intent": "time-window lookup"}
+    },
+    {
+      "id": "reg-by-id",
+      "input": {"prompt": "Show me the details of transaction adeb71e8-8e3b-49c4-8261-663a5f71d39f.", "top_k": 3},
+      "expected_output": {"expected_tool": "get_transaction", "constraints": {}, "notes": "Specific id -> get_transaction with that transaction_id. Verify tool + arg via trace."},
+      "metadata": {"intent": "drill-down by id"}
     }
   ]
 }

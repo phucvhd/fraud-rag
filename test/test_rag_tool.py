@@ -55,6 +55,68 @@ def test_fraud_lookup_order_by_risk_sorts_on_probability(mock_config_loader, moc
 
 @patch("services.tool.rag_tool.get_engine")
 @patch("services.tool.rag_tool.config_loader")
+def test_time_window_filters_event_timestamp(mock_config_loader, mock_get_engine):
+    engine, mock_conn = _build_engine(mock_get_engine, mock_config_loader, [])
+
+    engine.fraud_lookup(3, since_hours=2)
+
+    sql = str(mock_conn.execute.call_args[0][0])
+    assert "transactions.event_timestamp >=" in sql
+
+
+@patch("services.tool.rag_tool.get_engine")
+@patch("services.tool.rag_tool.config_loader")
+def test_time_window_omitted_adds_no_clause(mock_config_loader, mock_get_engine):
+    engine, mock_conn = _build_engine(mock_get_engine, mock_config_loader, [])
+
+    engine.suspected_lookup(3)
+
+    sql = str(mock_conn.execute.call_args[0][0])
+    assert "event_timestamp >=" not in sql
+
+
+@patch("services.tool.rag_tool.get_engine")
+@patch("services.tool.rag_tool.config_loader")
+def test_get_transaction_filters_by_id(mock_config_loader, mock_get_engine):
+    engine, mock_conn = _build_engine(mock_get_engine, mock_config_loader, [])
+
+    engine.get_transaction("7bc254fe-8d4b-433f-bfac-bc265b130eaa")
+
+    sql = str(mock_conn.execute.call_args[0][0])
+    assert "transactions.transaction_id =" in sql
+
+
+@patch("services.tool.rag_tool.get_engine")
+@patch("services.tool.rag_tool.config_loader")
+def test_fraud_stats_returns_counts_and_rate(mock_config_loader, mock_get_engine):
+    engine, mock_conn = _build_engine(mock_get_engine, mock_config_loader, [])
+    row = {"total": 200, "fraud": 8, "suspected": 12, "total_amount": Decimal("5000.00")}
+    mock_conn.execute.return_value.mappings.return_value.one.return_value = row
+
+    stats = json.loads(engine.fraud_stats(since_days=1))
+
+    assert stats["total_transactions"] == 200
+    assert stats["confirmed_fraud"] == 8
+    assert stats["suspected_high_risk"] == 12
+    assert stats["fraud_rate"] == 0.04
+    assert stats["total_amount"] == 5000.0
+
+
+@patch("services.tool.rag_tool.get_engine")
+@patch("services.tool.rag_tool.config_loader")
+def test_fraud_stats_rate_is_none_on_empty_window(mock_config_loader, mock_get_engine):
+    engine, mock_conn = _build_engine(mock_get_engine, mock_config_loader, [])
+    row = {"total": 0, "fraud": 0, "suspected": 0, "total_amount": Decimal("0")}
+    mock_conn.execute.return_value.mappings.return_value.one.return_value = row
+
+    stats = json.loads(engine.fraud_stats(since_hours=1))
+
+    # A rate over zero transactions is undefined, not 0%.
+    assert stats["fraud_rate"] is None
+
+
+@patch("services.tool.rag_tool.get_engine")
+@patch("services.tool.rag_tool.config_loader")
 def test_suspected_lookup_filters_by_score_not_by_is_fraud(mock_config_loader, mock_get_engine):
     engine, mock_conn = _build_engine(mock_get_engine, mock_config_loader, [])
 

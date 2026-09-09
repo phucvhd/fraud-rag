@@ -7,7 +7,7 @@ from langgraph.graph import StateGraph, START
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
 from langchain_mcp_adapters.client import MultiServerMCPClient
-from langchain_core.messages import HumanMessage, ToolMessage
+from langchain_core.messages import HumanMessage
 from langchain_core.runnables import RunnableConfig
 from langfuse.langchain import CallbackHandler
 
@@ -16,6 +16,7 @@ from services.agent.state import GraphState
 from services.agent.agent import LLMAgent
 from services.monitoring.metrics import count_agent_iterations, sum_token_usage, summarize_retrieval
 from services.monitoring.tracing import (
+    RETRIEVAL_MODE_BY_ID,
     RETRIEVAL_MODE_KNOWN_FRAUD,
     RETRIEVAL_MODE_NONE,
     RETRIEVAL_MODE_SUSPECTED,
@@ -29,41 +30,51 @@ logger = logging.getLogger(__name__)
 _CONTEXT_TOOL = "context_lookup"
 _KNOWN_FRAUD_TOOL = "find_known_fraud"
 _SUSPECTED_FRAUD_TOOL = "find_suspected_fraud"
-_LOOKUP_TOOLS = {_CONTEXT_TOOL, _KNOWN_FRAUD_TOOL, _SUSPECTED_FRAUD_TOOL}
-_ANALYSIS_TOOL = "interpret_fraud_features"
+_GET_TRANSACTION_TOOL = "get_transaction"
+# Tools whose output is a transaction list, so auto_analyze enriches each row.
+# fraud_stats is deliberately excluded: it returns aggregates, not transactions,
+# and routes straight back to the agent to be narrated.
+_LOOKUP_TOOLS = {_CONTEXT_TOOL, _KNOWN_FRAUD_TOOL, _SUSPECTED_FRAUD_TOOL, _GET_TRANSACTION_TOOL}
 
 _RETRIEVAL_MODES = {
     _CONTEXT_TOOL: RETRIEVAL_MODE_VECTOR,
     _KNOWN_FRAUD_TOOL: RETRIEVAL_MODE_KNOWN_FRAUD,
     _SUSPECTED_FRAUD_TOOL: RETRIEVAL_MODE_SUSPECTED,
+    _GET_TRANSACTION_TOOL: RETRIEVAL_MODE_BY_ID,
 }
 
 _AGENT_INSTRUCTIONS = """\
 {prompt}
 
 Instructions:
-Choose the lookup tool by what the user is really asking for:
+Choose the tool by what the user is really asking for:
+ - a COUNT / RATE / TOTAL ("how many fraud today", "fraud rate this hour", "total
+   amount flagged") -> fraud_stats. This returns aggregate numbers, not a list.
+ - one SPECIFIC transaction by id ("show transaction <id>", "why was <id> flagged")
+   -> get_transaction with that transaction_id.
  - "suspicious", "high risk", "most suspicious right now", "potential/possible fraud",
    "flagged", "not yet confirmed" -> find_suspected_fraud (transactions the model
    scored as risky, whether or not confirmed — this catches fraud BEFORE the label arrives).
  - "confirmed fraud", "known fraud cases", "already charged back" -> find_known_fraud
    (only transactions confirmed as fraudulent in the database).
  - a generic search by amount or free-text description -> context_lookup.
-When invoking a lookup tool, you MUST explicitly pass `top_k={top_k}` rather than relying on the default.
+For the lookup tools (not fraud_stats/get_transaction) you MUST pass `top_k={top_k}` explicitly.
 Translate the user's constraints into the tool's parameters rather than filtering afterwards:
  - an amount bound ("over 1000 EUR", "under 50") -> amount_min / amount_max
+ - a time window ("in the last hour" -> since_hours=1; "today" -> since_days=1; "this week" -> since_days=7)
  - a minimum risk ("risk above 80%") -> min_risk=0.8
  - "highest risk" is already the default order of find_suspected_fraud; on find_known_fraud use order_by="risk"
  - "largest" / "biggest amount" -> order_by="amount" on find_known_fraud
-A per-transaction fraud analysis (heuristic verdict and the real database label) is automatically
-attached to your tool results — you do NOT need to call interpret_fraud_features yourself.
-You MUST format your final response as a clear list containing all {top_k} transactions returned by the lookup tool.
+If you called fraud_stats, summarise the returned numbers in plain language (totals, fraud rate,
+etc.) instead of the per-transaction list below, then stop.
+Otherwise, format your final response as a clear list of the transactions the tool returned.
 For EACH transaction, clearly state:
  - Transaction ID
  - Transaction Time
  - Amount
  - Risk probability (the transaction's fraud_probability field, as a percentage; say "not available" if it is null)
- - Impact (use the analysis already provided to you)
+ - Impact (your read of how risky it looks, based on the risk probability and the contributing features below,
+   and whether it is already confirmed fraud via its is_fraud field)
  - Top contributing features (from the transaction's top_shap_features field — these are the specific
    features that drove THIS transaction's own score, already ranked by contribution; say "not available"
    if it is null. Do not just list raw V1/V2/etc. values — say which features pushed the score up or down.)
@@ -120,11 +131,13 @@ class FraudInspectorGraph:
     def __init__(self, agent: LLMAgent):
         cfg = config_loader.load()
         self.llm = agent.get_client()
+        # Only the repository server is wired in. There was a second MCP server
+        # exposing a per-transaction feature heuristic, but it recomputed a
+        # static-correlation score from raw V-features (once per transaction,
+        # over SSE) that duplicated — and sometimes contradicted — the real SHAP
+        # attributions (`top_shap_features`) already in the retrieval payload.
+        # The agent explains impact from that SHAP directly instead.
         self.mcp_client = MultiServerMCPClient({
-            "analysis_server": {
-                "url": cfg.mcp_servers.analysis.url,
-                "transport": "sse",
-            },
             "repository_server": {
                 "url": cfg.mcp_servers.repository.url,
                 "transport": "sse",
@@ -153,35 +166,25 @@ class FraudInspectorGraph:
 
             mcp_tools = await self.mcp_client.get_tools()
             llm_with_tools = self.llm.bind_tools(mcp_tools)
-            analysis_tool = next(t for t in mcp_tools if t.name == _ANALYSIS_TOOL)
 
             async def agent_node(state: GraphState, config: RunnableConfig):
                 messages = state["messages"]
                 response = await llm_with_tools.ainvoke(messages, config)
                 return {"messages": [response]}
 
-            async def auto_analyze_node(state: GraphState, config: RunnableConfig):
+            def capture_retrieval_node(state: GraphState):
+                """Pull the retrieved transactions out of the last lookup result
+                into state so run() can build the retriever span and the
+                experiment can score against them. No per-transaction analysis
+                call: the payload already carries fraud_probability and the real
+                SHAP attributions, which the agent explains directly."""
                 last_message = state["messages"][-1]
                 transactions = _parse_lookup_payload(last_message.content)
-
                 if transactions is None:
-                    return {"messages": []}
+                    return {}
 
-                lines = []
-                for txn in transactions:
-                    analysis = await analysis_tool.ainvoke({
-                        "v_features": txn.get("features", {}),
-                        "is_fraud": txn.get("is_fraud"),
-                    }, config)
-                    lines.append(f"TransactionId: {txn.get('transaction_id')} -> {analysis}")
-
-                combined = "\n".join(lines) if lines else "No transactions to analyze."
+                # Last lookup wins if the agent retrieves twice.
                 return {
-                    "messages": [
-                        ToolMessage(content=combined, name=_ANALYSIS_TOOL, tool_call_id="auto-analyze")
-                    ],
-                    # Carried out of the graph so run() can build the retriever
-                    # span. Last lookup wins if the agent retrieves twice.
                     "retrieved": transactions,
                     "retrieval_mode": _RETRIEVAL_MODES.get(
                         getattr(last_message, "name", None), RETRIEVAL_MODE_NONE
@@ -192,19 +195,19 @@ class FraudInspectorGraph:
             def route_after_tools(state: GraphState):
                 last_message = state["messages"][-1]
                 if getattr(last_message, "name", None) in _LOOKUP_TOOLS:
-                    return "auto_analyze"
+                    return "capture_retrieval"
                 return "agent"
 
             workflow = StateGraph(GraphState)
 
             workflow.add_node("agent", agent_node)
             workflow.add_node("tools", ToolNode(mcp_tools))
-            workflow.add_node("auto_analyze", auto_analyze_node)
+            workflow.add_node("capture_retrieval", capture_retrieval_node)
 
             workflow.add_edge(START, "agent")
             workflow.add_conditional_edges("agent", tools_condition)
-            workflow.add_conditional_edges("tools", route_after_tools, {"auto_analyze": "auto_analyze", "agent": "agent"})
-            workflow.add_edge("auto_analyze", "agent")
+            workflow.add_conditional_edges("tools", route_after_tools, {"capture_retrieval": "capture_retrieval", "agent": "agent"})
+            workflow.add_edge("capture_retrieval", "agent")
 
             self.graph = workflow.compile()
             return self.graph

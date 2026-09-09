@@ -11,7 +11,6 @@ def _cfg():
     cfg.llm.base_url = "http://localhost:1234/v1"
     cfg.llm.api_key = "test-key"
     cfg.mcp_servers.repository.url = "http://localhost:8003/sse"
-    cfg.mcp_servers.analysis.url = "http://localhost:8004/sse"
     return cfg
 
 
@@ -134,7 +133,7 @@ def test_check_all_gathers_every_dependency():
 
     results = asyncio.run(checker.check_all())
 
-    assert len(results) == 6
+    assert len(results) == 5
     names = [r["name"] for r in results]
     assert names.count("postgres") == 1
     assert names.count("kafka") == 1

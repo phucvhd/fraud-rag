@@ -47,13 +47,7 @@ class MCPServerConfig(BaseModel):
 
 
 class MCPServersConfig(BaseModel):
-    analysis: MCPServerConfig
     repository: MCPServerConfig
-
-
-class CorrelationAnalysisConfig(BaseModel):
-    features: dict[str, float]
-    thresholds: dict[str, float]
 
 
 class MonitoringConfig(BaseModel):
@@ -75,7 +69,6 @@ class ApplicationConfig(BaseModel):
     embedding: EmbeddingConfig
     llm: LLMConfig
     dashboard: DashboardConfig
-    correlation_analysis: CorrelationAnalysisConfig
     mcp_servers: MCPServersConfig
     monitoring: MonitoringConfig = MonitoringConfig()
 
