@@ -1,32 +1,38 @@
 :root {
   color-scheme: light;
 
-  /* Color — "ledger room": paper-grey ground, ink text, one alarm color.
-     Hues are semantic: teal = clear, brick = fraud, navy = brand/action, ochre = warn. */
-  --bg: #f5f6f3;            /* cool paper-grey ground */
-  --bg-panel: #ffffff;      /* raised surface */
-  --bg-inset: #eceeea;      /* recessed well (inputs, wells) */
-  --bg-hover: #e7e9e4;
+  /* Color — "developer console" (Langfuse-style): warm paper ground under a faint
+     grid, near-black ink + chrome, one acid-lime accent for live/active signals.
+     Semantic hues stay: brick = fraud, green = clear, ochre = warn. */
+  --bg: #f6f5f0;            /* warm cream ground */
+  --bg-panel: #fdfdfb;      /* raised surface, barely off-white */
+  --bg-inset: #efeee7;      /* recessed well (inputs, wells) */
+  --bg-hover: #eae9e1;
 
-  --ink: #10181c;           /* near-black, teal-tinted */
-  --ink-dim: #56646a;
-  --ink-faint: #8d9a9e;
+  --ink: #17170f;           /* near-black, warm */
+  --ink-dim: #5c5c50;
+  --ink-faint: #93938a;
 
-  --brand: #223a5e;         /* ledger navy — primary action / active state */
-  --brand-soft: #e4e9ef;
+  --brand: #17170f;         /* near-black — primary action / active state */
+  --brand-soft: #ecebe2;
+  --accent: #d6ec13;        /* acid lime — live/active/deploy signal only */
+  --accent-ink: #3d4400;    /* readable text on --accent fills */
+  --accent-soft: #f0f6c2;
   --fraud: #b23a2e;         /* brick alarm — fraud only, never decorative */
-  --fraud-soft: #f5deda;
-  --normal: #1e7a5f;        /* verified teal-green */
-  --normal-soft: #dceee6;
-  --warn: #a6752a;          /* ochre — caution */
-  --warn-soft: #f1e6d3;
+  --fraud-soft: #f5ded9;
+  --normal: #1e7a52;        /* verified green */
+  --normal-soft: #dcefe2;
+  --warn: #9c722a;          /* ochre — caution */
+  --warn-soft: #f1e8d0;
 
-  --line: #dee2dc;          /* hairline dividers */
-  --line-strong: #c1c7bf;
+  --line: #e3e1d7;          /* hairline dividers */
+  --line-strong: #c8c6ba;
+  --grid: rgba(23, 23, 15, 0.04); /* faint background graph paper */
 
-  /* Type — IBM Plex pair: Sans for UI/reading, Mono for anything counted or timestamped. */
-  --font-ui: "IBM Plex Sans", -apple-system, sans-serif;
-  --font-data: "IBM Plex Mono", ui-monospace, "SF Mono", monospace;
+  /* Type — Geist pair (Langfuse/dev-tool grotesk): Sans for UI/reading,
+     Mono for labels + anything counted. */
+  --font-ui: "Geist", -apple-system, "Segoe UI", sans-serif;
+  --font-data: "Geist Mono", ui-monospace, "SF Mono", monospace;
 
   --text-2xs: 0.6875rem;
   --text-xs: 0.75rem;
@@ -45,10 +51,10 @@
   --space-6: 32px;
   --space-7: 48px;
 
-  --radius-sm: 4px;
-  --radius: 8px;
+  --radius-sm: 3px;
+  --radius: 6px;
   --line-w: 1px;
-  --shadow-pop: 0 8px 24px -8px rgba(16, 24, 28, 0.16);
+  --shadow-pop: 0 8px 24px -10px rgba(23, 23, 15, 0.14);
 
   --motion-fast: 100ms;
   --motion-base: 180ms;
