@@ -52,19 +52,19 @@ def find_known_fraud(
     min_risk: float | None = None,
     order_by: str = "recency",
 ) -> str:
-    """Use this tool when the user asks for anomalies, fraud cases, or suspicious
-    transactions. Returns transactions confirmed as fraudulent (is_fraud = true)
-    directly from the database as a JSON list, each including fraud_probability
-    (the model's risk score, 0-1, may be null) and top_shap_features (may be null).
-    This is ground truth, not a similarity search.
+    """Use this ONLY for transactions already CONFIRMED as fraud (is_fraud = true)
+    — e.g. 'known fraud cases', 'past confirmed fraud', 'transactions that were
+    charged back'. Returns them directly from the database as a JSON list, each
+    including fraud_probability and top_shap_features.
+    For transactions that are merely SUSPECTED / high-risk but not yet confirmed,
+    use find_suspected_fraud instead — this tool cannot see them.
 
     Honour the user's constraints via the parameters:
      - amount_min / amount_max: restrict to an amount range ('over 1000 EUR'
        -> amount_min=1000).
      - min_risk: only transactions with fraud_probability >= this (0-1).
      - order_by: 'recency' (default, newest first), 'risk' (highest
-       fraud_probability first — use this for 'most suspicious' / 'highest risk'),
-       or 'amount' (largest first).
+       fraud_probability first) or 'amount' (largest first).
     Always specify 'top_k' to define how many results to return."""
     try:
         logger.info("Start retrieving known fraud transactions")
@@ -75,6 +75,39 @@ def find_known_fraud(
         return context
     except Exception as e:
         logger.error("Failed to retrieve known fraud transactions: %s", e)
+        raise
+
+
+@mcp.tool()
+def find_suspected_fraud(
+    top_k: int,
+    min_risk: float | None = None,
+    amount_min: float | None = None,
+    amount_max: float | None = None,
+) -> str:
+    """Use this for SUSPICIOUS / high-risk / 'most suspicious right now' / 'highest
+    fraud risk' / 'potential fraud' questions — transactions the ML model scored as
+    risky, whether or not they are confirmed fraud yet. Returns them ordered by
+    fraud_probability (highest risk first) as a JSON list; each includes is_fraud
+    so you can see whether it is already confirmed or still only suspected.
+
+    This is the tool for catching fraud BEFORE the chargeback/analyst label
+    arrives. Unlike find_known_fraud it does NOT require is_fraud = true, so it
+    surfaces high-risk transactions that are not yet confirmed.
+
+     - min_risk: only transactions with fraud_probability >= this (0-1), e.g.
+       'risk above 80%' -> min_risk=0.8.
+     - amount_min / amount_max: restrict to an amount range.
+    Always specify 'top_k'."""
+    try:
+        logger.info("Start retrieving suspected fraud transactions")
+        context = rag_engine.suspected_lookup(
+            top_k, min_risk=min_risk, amount_min=amount_min, amount_max=amount_max
+        )
+        logger.info("Retrieved suspected fraud transactions successfully")
+        return context
+    except Exception as e:
+        logger.error("Failed to retrieve suspected fraud transactions: %s", e)
         raise
 
 

@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 
 RETRIEVAL_MODE_VECTOR = "vector"
 RETRIEVAL_MODE_KNOWN_FRAUD = "known_fraud"
+RETRIEVAL_MODE_SUSPECTED = "suspected"
 RETRIEVAL_MODE_NONE = "none"
 
 

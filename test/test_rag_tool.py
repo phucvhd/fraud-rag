@@ -55,6 +55,55 @@ def test_fraud_lookup_order_by_risk_sorts_on_probability(mock_config_loader, moc
 
 @patch("services.tool.rag_tool.get_engine")
 @patch("services.tool.rag_tool.config_loader")
+def test_suspected_lookup_filters_by_score_not_by_is_fraud(mock_config_loader, mock_get_engine):
+    engine, mock_conn = _build_engine(mock_get_engine, mock_config_loader, [])
+
+    engine.suspected_lookup(3)
+
+    sql = str(mock_conn.execute.call_args[0][0])
+    # The whole point: filter on the ML score's presence, NOT on the confirmed
+    # label — so unconfirmed high-risk transactions are surfaced. is_fraud is
+    # still SELECTed (returned in the payload); it just must not be a WHERE filter.
+    assert "fraud_probability IS NOT NULL" in sql
+    assert "is_fraud is" not in sql.lower()  # no `WHERE is_fraud IS true`
+    assert "ORDER BY transactions.fraud_probability DESC" in sql
+
+
+@patch("services.tool.rag_tool.get_engine")
+@patch("services.tool.rag_tool.config_loader")
+def test_suspected_lookup_applies_min_risk_and_amount(mock_config_loader, mock_get_engine):
+    engine, mock_conn = _build_engine(mock_get_engine, mock_config_loader, [])
+
+    engine.suspected_lookup(3, min_risk=0.8, amount_min=100)
+
+    sql = str(mock_conn.execute.call_args[0][0])
+    assert "transactions.fraud_probability >=" in sql
+    assert "transactions.amount >=" in sql
+
+
+@patch("services.tool.rag_tool.get_engine")
+@patch("services.tool.rag_tool.config_loader")
+def test_suspected_lookup_returns_is_fraud_in_payload(mock_config_loader, mock_get_engine):
+    records = [{
+        "transaction_id": "7bc254fe-8d4b-433f-bfac-bc265b130eaa",
+        "amount": Decimal("98.00"),
+        "event_timestamp": "2026-09-08 22:34:35",
+        "is_fraud": False,  # suspected but NOT confirmed
+        "fraud_probability": Decimal("0.95000"),
+        "top_shap_features": None,
+        "features": {"V1": 1.0},
+    }]
+    engine, _ = _build_engine(mock_get_engine, mock_config_loader, records)
+
+    payload = json.loads(engine.suspected_lookup(3))
+
+    # Analyst must see it is high-risk (0.95) yet still unconfirmed (is_fraud False).
+    assert payload[0]["fraud_probability"] == pytest.approx(0.95)
+    assert payload[0]["is_fraud"] is False
+
+
+@patch("services.tool.rag_tool.get_engine")
+@patch("services.tool.rag_tool.config_loader")
 def test_fraud_lookup_unknown_order_falls_back_to_recency(mock_config_loader, mock_get_engine):
     engine, mock_conn = _build_engine(mock_get_engine, mock_config_loader, [])
 

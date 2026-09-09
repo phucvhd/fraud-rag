@@ -136,6 +136,35 @@ class RAGQueryEngine:
             logger.error("Known-fraud query failed: %s", e)
             raise
 
+    def _retrieve_suspected(self, top_k: int, min_risk=None, amount_min=None, amount_max=None):
+        try:
+            # The whole point: filter by the ML score, NOT by is_fraud. This
+            # surfaces transactions the model flags as high risk that are not yet
+            # confirmed fraud (the chargeback / analyst label has not arrived) —
+            # exactly the ones fraud_lookup misses. is_fraud is still returned in
+            # the payload so the analyst sees confirmed vs unconfirmed.
+            stmt = select(
+                TransactionModel.transaction_id,
+                TransactionModel.amount,
+                TransactionModel.event_timestamp,
+                TransactionModel.is_fraud,
+                TransactionModel.fraud_probability,
+                TransactionModel.top_shap_features,
+                TransactionModel.features,
+            ).where(TransactionModel.fraud_probability.isnot(None))
+
+            if min_risk is not None:
+                stmt = stmt.where(TransactionModel.fraud_probability >= min_risk)
+            stmt = _apply_amount_filters(stmt, amount_min, amount_max)
+            # Highest model risk first — "most suspicious".
+            stmt = stmt.order_by(TransactionModel.fraud_probability.desc()).limit(top_k)
+
+            with self.engine.connect() as conn:
+                return conn.execute(stmt).mappings().all()
+        except Exception as e:
+            logger.error("Suspected-fraud query failed: %s", e)
+            raise
+
     def context_lookup(self, query=None, top_k: int = 5, amount_min=None, amount_max=None) -> str:
         """
         Semantic search for transactions in PostgreSQL by natural-language similarity,
@@ -166,4 +195,19 @@ class RAGQueryEngine:
             return result
         except Exception as e:
             logger.error("Failed when transforming known-fraud context: %s", e)
+            raise
+
+    def suspected_lookup(self, top_k: int = 5, min_risk=None, amount_min=None, amount_max=None) -> str:
+        """
+        Fetch transactions the ML model scored as high risk, ordered by risk,
+        REGARDLESS of the confirmed is_fraud label — including ones not yet
+        confirmed as fraud. This is the "catch it before the chargeback" path.
+        """
+        try:
+            context = self._retrieve_suspected(top_k, min_risk, amount_min, amount_max)
+            result = self._serialize(context)
+            logger.info("Retrieved suspected-fraud context successfully")
+            return result
+        except Exception as e:
+            logger.error("Failed when transforming suspected-fraud context: %s", e)
             raise

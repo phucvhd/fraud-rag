@@ -18,6 +18,7 @@ from services.monitoring.metrics import count_agent_iterations, sum_token_usage,
 from services.monitoring.tracing import (
     RETRIEVAL_MODE_KNOWN_FRAUD,
     RETRIEVAL_MODE_NONE,
+    RETRIEVAL_MODE_SUSPECTED,
     RETRIEVAL_MODE_VECTOR,
     InvestigationTracer,
 )
@@ -27,27 +28,33 @@ logger = logging.getLogger(__name__)
 
 _CONTEXT_TOOL = "context_lookup"
 _KNOWN_FRAUD_TOOL = "find_known_fraud"
-_LOOKUP_TOOLS = {_CONTEXT_TOOL, _KNOWN_FRAUD_TOOL}
+_SUSPECTED_FRAUD_TOOL = "find_suspected_fraud"
+_LOOKUP_TOOLS = {_CONTEXT_TOOL, _KNOWN_FRAUD_TOOL, _SUSPECTED_FRAUD_TOOL}
 _ANALYSIS_TOOL = "interpret_fraud_features"
 
 _RETRIEVAL_MODES = {
     _CONTEXT_TOOL: RETRIEVAL_MODE_VECTOR,
     _KNOWN_FRAUD_TOOL: RETRIEVAL_MODE_KNOWN_FRAUD,
+    _SUSPECTED_FRAUD_TOOL: RETRIEVAL_MODE_SUSPECTED,
 }
 
 _AGENT_INSTRUCTIONS = """\
 {prompt}
 
 Instructions:
-Use the find_known_fraud tool (not context_lookup) when the user asks about anomalies, fraud, or
-suspicious transactions — it returns transactions confirmed as fraudulent in the database.
-Use context_lookup only for generic searches (e.g. by amount or free-text description).
-When invoking either lookup tool, you MUST explicitly pass `top_k={top_k}` as an argument rather than relying on its default value.
+Choose the lookup tool by what the user is really asking for:
+ - "suspicious", "high risk", "most suspicious right now", "potential/possible fraud",
+   "flagged", "not yet confirmed" -> find_suspected_fraud (transactions the model
+   scored as risky, whether or not confirmed — this catches fraud BEFORE the label arrives).
+ - "confirmed fraud", "known fraud cases", "already charged back" -> find_known_fraud
+   (only transactions confirmed as fraudulent in the database).
+ - a generic search by amount or free-text description -> context_lookup.
+When invoking a lookup tool, you MUST explicitly pass `top_k={top_k}` rather than relying on the default.
 Translate the user's constraints into the tool's parameters rather than filtering afterwards:
  - an amount bound ("over 1000 EUR", "under 50") -> amount_min / amount_max
- - "most suspicious" / "highest risk" -> order_by="risk" on find_known_fraud
- - "largest" / "biggest amount" -> order_by="amount"
  - a minimum risk ("risk above 80%") -> min_risk=0.8
+ - "highest risk" is already the default order of find_suspected_fraud; on find_known_fraud use order_by="risk"
+ - "largest" / "biggest amount" -> order_by="amount" on find_known_fraud
 A per-transaction fraud analysis (heuristic verdict and the real database label) is automatically
 attached to your tool results — you do NOT need to call interpret_fraud_features yourself.
 You MUST format your final response as a clear list containing all {top_k} transactions returned by the lookup tool.

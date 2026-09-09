@@ -37,6 +37,12 @@
       "input": {"prompt": "Show fraudulent transactions with the highest fraud risk probability.", "top_k": 3},
       "expected_output": {"retrieval_mode": "known_fraud", "constraints": {"order_by": "risk"}, "notes": "'highest risk' -> order_by=risk; each risk % must match payload."},
       "metadata": {"intent": "known-fraud lookup"}
+    },
+    {
+      "id": "reg-suspected-unconfirmed",
+      "input": {"prompt": "Which transactions does the model flag as high risk but that are not confirmed fraud yet?", "top_k": 3},
+      "expected_output": {"retrieval_mode": "suspected", "constraints": {"order_by": "risk"}, "notes": "Must route to find_suspected_fraud (score-based, not is_fraud); ordered by risk. The core 'catch before chargeback' query."},
+      "metadata": {"intent": "suspected-fraud lookup"}
     }
   ]
 }
