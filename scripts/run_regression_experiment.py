@@ -36,7 +36,7 @@ from schemas.dto import QueryRequest
 from services.agent.agent import LLMAgent
 from services.agent.graph import FraudInspectorGraph
 from services.monitoring import scorers
-from services.monitoring.ragas_eval import FaithfulnessJudge
+from services.monitoring.ragas_eval import RagasEvaluator
 from shared.config_loader import config_loader
 from shared.logging_config import configure_logging
 
@@ -81,24 +81,35 @@ def _deterministic_evaluators(*, input, output, expected_output=None, metadata=N
     )
 
 
-# Off by default: RAGAS is LLM-as-judge and only meaningful with a strong judge.
-# With the local model it returns noise (empirically 0.0 for good and bad alike),
-# so enable it only when RAGAS_JUDGE_* points at a capable model.
-_ragas_judge = FaithfulnessJudge() if os.getenv("RAGAS_ENABLED") else None
+# Off by default: RAGAS is judge-backed. faithfulness needs a strong judge to be
+# meaningful (local model returns noise); answer_relevancy is embedding-backed and
+# stays usable locally. Enable with RAGAS_ENABLED; point RAGAS_JUDGE_* at a strong
+# model to trust faithfulness.
+_ragas = RagasEvaluator() if os.getenv("RAGAS_ENABLED") else None
 
 
 async def _ragas_evaluators(*, input, output, expected_output=None, metadata=None, **_kwargs):
-    """Semantic faithfulness — catches unsupported claims the structural scorers
-    cannot see. Returns [] (no score) rather than failing when the judge is
-    unavailable or the answer has no context to check against."""
-    if _ragas_judge is None or not output:
+    """Semantic checks the structural scorers cannot see. Each returns [] rather
+    than failing when the judge is unavailable or the input is insufficient."""
+    if _ragas is None or not output:
         return []
     question = input.get("prompt", "") if isinstance(input, dict) else ""
-    scored = await _ragas_judge.score(question, output.get("answer", ""), output.get("retrieved", []))
-    if scored is None:
-        return []
-    value, reason = scored
-    return [Evaluation(name="ragas_faithfulness", value=value, comment=reason, data_type="NUMERIC")]
+    answer = output.get("answer", "")
+    evaluations = []
+
+    faith = await _ragas.faithfulness(question, answer, output.get("retrieved", []))
+    if faith is not None:
+        evaluations.append(
+            Evaluation(name="ragas_faithfulness", value=faith[0], comment=faith[1], data_type="NUMERIC")
+        )
+
+    relevancy = await _ragas.answer_relevancy(question, answer)
+    if relevancy is not None:
+        evaluations.append(
+            Evaluation(name="ragas_answer_relevancy", value=relevancy[0], comment=relevancy[1], data_type="NUMERIC")
+        )
+
+    return evaluations
 
 
 def _load_data(client, dataset_name: str):
@@ -137,7 +148,7 @@ def main() -> int:
         task=_task,
         # Deterministic scorers always run (cheap, exact). RAGAS is appended only
         # when RAGAS_ENABLED is set and adds a semantic faithfulness score.
-        evaluators=[_deterministic_evaluators] + ([_ragas_evaluators] if _ragas_judge else []),
+        evaluators=[_deterministic_evaluators] + ([_ragas_evaluators] if _ragas else []),
         # The local model serves one request at a time; serial keeps the run
         # deterministic and avoids hammering the endpoint.
         max_concurrency=1,
