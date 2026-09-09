@@ -10,6 +10,28 @@ from shared.config_loader import config_loader
 
 logger = logging.getLogger(__name__)
 
+# Ordering options for find_known_fraud. Kept as a whitelist so the agent (or a
+# bad tool call) can never inject an arbitrary column into ORDER BY.
+ORDER_RECENCY = "recency"
+ORDER_RISK = "risk"
+ORDER_AMOUNT = "amount"
+_ORDER_BY = {
+    ORDER_RECENCY: TransactionModel.event_timestamp.desc(),
+    # nulls last: an unscored transaction is not "highest risk".
+    ORDER_RISK: TransactionModel.fraud_probability.desc().nullslast(),
+    ORDER_AMOUNT: TransactionModel.amount.desc(),
+}
+
+
+def _apply_amount_filters(stmt, amount_min, amount_max):
+    """Structured amount filters, applied only when provided so the tools stay
+    backward compatible when the agent omits them."""
+    if amount_min is not None:
+        stmt = stmt.where(TransactionModel.amount >= amount_min)
+    if amount_max is not None:
+        stmt = stmt.where(TransactionModel.amount <= amount_max)
+    return stmt
+
 
 class RAGQueryEngine:
     def __init__(self, sentence_transformer_model: SentenceTransformerModel):
@@ -42,30 +64,44 @@ class RAGQueryEngine:
         ]
         return json.dumps(payload)
 
-    def _retrieve_context(self, query: str, top_k: int):
-        try:
-            query_vector = self.embedder.encode(query).tolist()
+    _CONTEXT_COLUMNS = (
+        TransactionModel.transaction_id,
+        TransactionModel.amount,
+        TransactionModel.event_timestamp,
+        TransactionModel.is_fraud,
+        TransactionModel.fraud_probability,
+        TransactionModel.top_shap_features,
+        TransactionModel.features,
+    )
 
-            stmt = (
-                select(
-                    TransactionModel.transaction_id,
-                    TransactionModel.amount,
-                    TransactionModel.event_timestamp,
-                    TransactionModel.is_fraud,
-                    TransactionModel.fraud_probability,
-                    TransactionModel.top_shap_features,
-                    TransactionModel.features,
-                    # Reported for the retriever span only. Ranking still uses
-                    # l2 distance so adding observability does not change which
-                    # cases the agent sees; cosine is selected because these
-                    # embeddings are not L2-normalised, which makes distance
-                    # itself uninterpretable as a similarity.
-                    EmbeddingModel.embedding.cosine_distance(query_vector).label("cosine_distance"),
+    def _retrieve_context(self, query=None, top_k: int = 5, amount_min=None, amount_max=None):
+        try:
+            if query:
+                query_vector = self.embedder.encode(query).tolist()
+                stmt = (
+                    select(
+                        *self._CONTEXT_COLUMNS,
+                        # Reported for the retriever span only. Ranking still uses
+                        # l2 distance so adding observability does not change which
+                        # cases the agent sees; cosine is selected because these
+                        # embeddings are not L2-normalised, which makes distance
+                        # itself uninterpretable as a similarity.
+                        EmbeddingModel.embedding.cosine_distance(query_vector).label("cosine_distance"),
+                    )
+                    .join(EmbeddingModel, TransactionModel.transaction_id == EmbeddingModel.transaction_id)
                 )
-                .join(EmbeddingModel, TransactionModel.transaction_id == EmbeddingModel.transaction_id)
-                .order_by(EmbeddingModel.embedding.l2_distance(query_vector))
-                .limit(top_k)
-            )
+                # Amount filters narrow BEFORE the similarity limit, so "similar to
+                # X AND over 1000 EUR" returns the top_k nearest that also match,
+                # not the top_k nearest of which some happen to match.
+                stmt = _apply_amount_filters(stmt, amount_min, amount_max)
+                stmt = stmt.order_by(EmbeddingModel.embedding.l2_distance(query_vector)).limit(top_k)
+            else:
+                # No descriptive term — a pure amount-range listing. Skips the
+                # vector search entirely (so `similarity` is null) rather than
+                # requiring a meaningless query string; ordered by recency.
+                stmt = select(*self._CONTEXT_COLUMNS)
+                stmt = _apply_amount_filters(stmt, amount_min, amount_max)
+                stmt = stmt.order_by(TransactionModel.event_timestamp.desc()).limit(top_k)
 
             with self.engine.connect() as conn:
                 return conn.execute(stmt).mappings().all()
@@ -73,22 +109,26 @@ class RAGQueryEngine:
             logger.error("Query failed: %s", e)
             raise
 
-    def _retrieve_known_fraud(self, top_k: int):
+    def _retrieve_known_fraud(self, top_k: int, amount_min=None, amount_max=None, min_risk=None, order_by=ORDER_RECENCY):
         try:
-            stmt = (
-                select(
-                    TransactionModel.transaction_id,
-                    TransactionModel.amount,
-                    TransactionModel.event_timestamp,
-                    TransactionModel.is_fraud,
-                    TransactionModel.fraud_probability,
-                    TransactionModel.top_shap_features,
-                    TransactionModel.features,
-                )
-                .where(TransactionModel.is_fraud.is_(True))
-                .order_by(TransactionModel.event_timestamp.desc())
-                .limit(top_k)
-            )
+            stmt = select(
+                TransactionModel.transaction_id,
+                TransactionModel.amount,
+                TransactionModel.event_timestamp,
+                TransactionModel.is_fraud,
+                TransactionModel.fraud_probability,
+                TransactionModel.top_shap_features,
+                TransactionModel.features,
+            ).where(TransactionModel.is_fraud.is_(True))
+
+            stmt = _apply_amount_filters(stmt, amount_min, amount_max)
+            if min_risk is not None:
+                stmt = stmt.where(TransactionModel.fraud_probability >= min_risk)
+
+            # Unknown order_by falls back to recency rather than erroring — a bad
+            # ordering choice should degrade, not fail the investigation.
+            order_clause = _ORDER_BY.get(order_by, _ORDER_BY[ORDER_RECENCY])
+            stmt = stmt.order_by(order_clause).limit(top_k)
 
             with self.engine.connect() as conn:
                 return conn.execute(stmt).mappings().all()
@@ -96,13 +136,14 @@ class RAGQueryEngine:
             logger.error("Known-fraud query failed: %s", e)
             raise
 
-    def context_lookup(self, query: str, top_k: int = 5) -> str:
+    def context_lookup(self, query=None, top_k: int = 5, amount_min=None, amount_max=None) -> str:
         """
-        Semantic search for transactions in PostgreSQL by natural-language similarity.
-        Will automatically use the top_k specified in the initial request.
+        Semantic search for transactions in PostgreSQL by natural-language similarity,
+        optionally narrowed to an amount range. When `query` is omitted it becomes a
+        pure amount-range listing (no vector search). Uses the top_k from the request.
         """
         try:
-            context = self._retrieve_context(query, top_k)
+            context = self._retrieve_context(query, top_k, amount_min, amount_max)
             result = self._serialize(context)
             logger.info("Retrieved context successfully")
             return result
@@ -110,13 +151,16 @@ class RAGQueryEngine:
             logger.error("Failed when transforming context: %s", e)
             raise
 
-    def fraud_lookup(self, top_k: int = 5) -> str:
+    def fraud_lookup(
+        self, top_k: int = 5, amount_min=None, amount_max=None, min_risk=None, order_by=ORDER_RECENCY
+    ) -> str:
         """
-        Fetch the most recent transactions confirmed as fraudulent (is_fraud = true)
-        directly from PostgreSQL, ordered by recency. Ground truth, no vector search.
+        Fetch transactions confirmed as fraudulent (is_fraud = true) directly from
+        PostgreSQL, with optional amount / minimum-risk filters and an ordering
+        (recency, risk or amount). Ground truth, no vector search.
         """
         try:
-            context = self._retrieve_known_fraud(top_k)
+            context = self._retrieve_known_fraud(top_k, amount_min, amount_max, min_risk, order_by)
             result = self._serialize(context)
             logger.info("Retrieved known-fraud context successfully")
             return result

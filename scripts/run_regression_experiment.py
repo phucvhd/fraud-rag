@@ -59,19 +59,26 @@ async def _task(*, item, **_kwargs):
     }
 
 
+def _as_evaluations(scores):
+    return [
+        Evaluation(name=s["name"], value=s["value"], comment=s["comment"], data_type=s["data_type"])
+        for s in scores
+    ]
+
+
 def _deterministic_evaluators(*, input, output, expected_output=None, metadata=None, **_kwargs):
-    """Turn the pure scorers into Langfuse Evaluations for this item."""
+    """Faithfulness (answer ↔ retrieved) plus relevance (retrieval ↔ the
+    constraints the question implied). Relevance reads `expected_output.constraints`
+    and is what moves when the MCP tools gain filtering — faithfulness alone is
+    blind to a wrong filter."""
     if not output:
         return [Evaluation(name="task_failed", value=0.0, data_type="NUMERIC", comment="no output")]
-    return [
-        Evaluation(
-            name=score["name"],
-            value=score["value"],
-            comment=score["comment"],
-            data_type=score["data_type"],
-        )
-        for score in scorers.evaluate(output.get("answer", ""), output.get("retrieved", []))
-    ]
+    retrieved = output.get("retrieved", [])
+    constraints = (expected_output or {}).get("constraints") if isinstance(expected_output, dict) else None
+    return _as_evaluations(
+        scorers.evaluate(output.get("answer", ""), retrieved)
+        + scorers.evaluate_relevance(retrieved, constraints)
+    )
 
 
 # Off by default: RAGAS is LLM-as-judge and only meaningful with a strong judge.

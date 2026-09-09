@@ -43,6 +43,11 @@ Use the find_known_fraud tool (not context_lookup) when the user asks about anom
 suspicious transactions — it returns transactions confirmed as fraudulent in the database.
 Use context_lookup only for generic searches (e.g. by amount or free-text description).
 When invoking either lookup tool, you MUST explicitly pass `top_k={top_k}` as an argument rather than relying on its default value.
+Translate the user's constraints into the tool's parameters rather than filtering afterwards:
+ - an amount bound ("over 1000 EUR", "under 50") -> amount_min / amount_max
+ - "most suspicious" / "highest risk" -> order_by="risk" on find_known_fraud
+ - "largest" / "biggest amount" -> order_by="amount"
+ - a minimum risk ("risk above 80%") -> min_risk=0.8
 A per-transaction fraud analysis (heuristic verdict and the real database label) is automatically
 attached to your tool results — you do NOT need to call interpret_fraud_features yourself.
 You MUST format your final response as a clear list containing all {top_k} transactions returned by the lookup tool.

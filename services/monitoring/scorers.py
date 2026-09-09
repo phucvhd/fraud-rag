@@ -112,6 +112,79 @@ _SCORERS = {
 }
 
 
+def _ordered_fraction(values: list, key) -> float:
+    """Fraction of adjacent pairs already in non-increasing order by `key`.
+
+    Partial credit rather than pass/fail: a list that is mostly sorted scores
+    higher than a shuffled one, which makes regressions visible as a gradual
+    drop instead of a cliff. None sorts lowest (an unscored transaction is not
+    'highest risk').
+    """
+    ranks = [(-float("inf") if key(v) is None else key(v)) for v in values]
+    pairs = list(zip(ranks, ranks[1:]))
+    if not pairs:
+        return 1.0
+    correct = sum(1 for a, b in pairs if a >= b)
+    return correct / len(pairs)
+
+
+def evaluate_relevance(retrieved: list[dict], constraints: dict | None) -> list[dict]:
+    """Did the retrieval honour the constraints the question implied?
+
+    Separate from `evaluate` because it needs the expected constraints (from the
+    dataset's expected_output) — and because it measures a different thing:
+    faithfulness asks "did the answer report the data", relevance asks "was the
+    right data retrieved". The faithfulness scorers are blind to a wrong filter;
+    these are the ones that move when the MCP tools gain (or lose) filtering.
+    """
+    if not retrieved or not constraints:
+        return []
+
+    results = []
+    amounts = [float(r["amount"]) for r in retrieved if r.get("amount") is not None]
+
+    if constraints.get("amount_min") is not None and amounts:
+        bound = float(constraints["amount_min"])
+        ok = sum(1 for a in amounts if a >= bound)
+        results.append({
+            "name": "amount_min_honored", "value": ok / len(amounts),
+            "comment": f"{ok}/{len(amounts)} >= {bound}", "data_type": "NUMERIC",
+        })
+
+    if constraints.get("amount_max") is not None and amounts:
+        bound = float(constraints["amount_max"])
+        ok = sum(1 for a in amounts if a <= bound)
+        results.append({
+            "name": "amount_max_honored", "value": ok / len(amounts),
+            "comment": f"{ok}/{len(amounts)} <= {bound}", "data_type": "NUMERIC",
+        })
+
+    if constraints.get("min_risk") is not None:
+        bound = float(constraints["min_risk"])
+        # A null score violates a minimum-risk filter: it should not have been returned.
+        ok = sum(1 for r in retrieved if (r.get("fraud_probability") or -1) >= bound)
+        results.append({
+            "name": "min_risk_honored", "value": ok / len(retrieved),
+            "comment": f"{ok}/{len(retrieved)} >= {bound}", "data_type": "NUMERIC",
+        })
+
+    order_by = constraints.get("order_by")
+    if order_by == "risk":
+        value = _ordered_fraction(retrieved, key=lambda r: r.get("fraud_probability"))
+        results.append({
+            "name": "ordered_by_risk", "value": value,
+            "comment": "descending by risk", "data_type": "NUMERIC",
+        })
+    elif order_by == "amount":
+        value = _ordered_fraction(retrieved, key=lambda r: r.get("amount"))
+        results.append({
+            "name": "ordered_by_amount", "value": value,
+            "comment": "descending by amount", "data_type": "NUMERIC",
+        })
+
+    return results
+
+
 def evaluate(answer: str, retrieved: list[dict]) -> list[dict]:
     """Run every scorer, dropping the ones that do not apply.
 

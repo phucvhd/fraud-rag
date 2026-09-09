@@ -1,41 +1,41 @@
 {
   "name": "fraud-rag-regression",
-  "description": "Fixed question set for the fraud investigation agent. Answers are scored structurally (does the answer faithfully report the retrieved data), not against an exact expected string — the retrieved transactions change over time, so expected_output holds intent notes only.",
+  "description": "Fixed question set for the fraud investigation agent. Faithfulness scorers check the answer reports the retrieved data; relevance scorers check the retrieval honoured the question's constraints (expected_output.constraints). Expected_output holds machine-readable constraints plus intent notes, not an exact answer string.",
   "items": [
     {
       "id": "reg-suspicious-now",
       "input": {"prompt": "Show me the most suspicious transactions right now.", "top_k": 3},
-      "expected_output": {"retrieval_mode": "known_fraud", "notes": "Lists 3 fraud transactions with risk % and top features."},
+      "expected_output": {"retrieval_mode": "known_fraud", "constraints": {"order_by": "risk"}, "notes": "'most suspicious' -> order_by=risk."},
       "metadata": {"intent": "known-fraud lookup"}
     },
     {
       "id": "reg-anomaly-over-1000",
       "input": {"prompt": "Any anomaly transactions over 1000 EUR in the last hour?", "top_k": 5},
-      "expected_output": {"retrieval_mode": "known_fraud", "notes": "Anomaly wording routes to find_known_fraud; lists all 5."},
+      "expected_output": {"retrieval_mode": "known_fraud", "constraints": {"amount_min": 1000}, "notes": "'over 1000 EUR' -> amount_min=1000."},
       "metadata": {"intent": "known-fraud lookup"}
     },
     {
       "id": "reg-similar-to-fraud",
       "input": {"prompt": "Find transactions similar to known fraud patterns.", "top_k": 3},
-      "expected_output": {"retrieval_mode": "known_fraud", "notes": "Fraud-pattern wording routes to find_known_fraud."},
+      "expected_output": {"retrieval_mode": "known_fraud", "constraints": {}, "notes": "No structured constraint; routing + faithfulness only."},
       "metadata": {"intent": "known-fraud lookup"}
     },
     {
       "id": "reg-recent-fraud",
       "input": {"prompt": "List the most recent fraudulent transactions.", "top_k": 5},
-      "expected_output": {"retrieval_mode": "known_fraud", "notes": "Explicit fraud request; all 5 listed, no drops."},
+      "expected_output": {"retrieval_mode": "known_fraud", "constraints": {}, "notes": "Recency is the default order; no explicit constraint to score."},
       "metadata": {"intent": "known-fraud lookup"}
     },
     {
       "id": "reg-generic-amount",
       "input": {"prompt": "Find transactions around 50 EUR.", "top_k": 3},
-      "expected_output": {"retrieval_mode": "vector", "notes": "Generic amount search routes to context_lookup (semantic)."},
+      "expected_output": {"retrieval_mode": "vector", "constraints": {"amount_min": 40, "amount_max": 60}, "notes": "'around 50 EUR' -> amount_min=40, amount_max=60 on context_lookup."},
       "metadata": {"intent": "semantic lookup"}
     },
     {
       "id": "reg-high-risk",
-      "input": {"prompt": "Show transactions with the highest fraud risk probability.", "top_k": 3},
-      "expected_output": {"retrieval_mode": "known_fraud", "notes": "Risk-focused; each risk % must match the payload."},
+      "input": {"prompt": "Show fraudulent transactions with the highest fraud risk probability.", "top_k": 3},
+      "expected_output": {"retrieval_mode": "known_fraud", "constraints": {"order_by": "risk"}, "notes": "'highest risk' -> order_by=risk; each risk % must match payload."},
       "metadata": {"intent": "known-fraud lookup"}
     }
   ]

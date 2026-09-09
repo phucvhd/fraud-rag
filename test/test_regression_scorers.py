@@ -1,5 +1,6 @@
 from services.monitoring.scorers import (
     evaluate,
+    evaluate_relevance,
     no_hallucinated_ids,
     no_raw_output,
     risk_score_fidelity,
@@ -96,3 +97,54 @@ def test_evaluate_full_set_on_a_good_answer():
     assert results["no_hallucinated_ids"] == 1.0
     assert results["risk_score_fidelity"] == 1.0
     assert results["no_raw_output"] == 1.0
+
+
+# --- relevance scorers -----------------------------------------------------
+
+def _amt(a, score=None):
+    return {"transaction_id": A, "amount": a, "fraud_probability": score}
+
+
+def test_relevance_amount_min_full_when_all_pass():
+    retrieved = [_amt(1200), _amt(5000)]
+    r = {s["name"]: s["value"] for s in evaluate_relevance(retrieved, {"amount_min": 1000})}
+    assert r["amount_min_honored"] == 1.0
+
+
+def test_relevance_amount_min_partial_when_tool_ignored_filter():
+    # This is the before-upgrade case: tool returned amounts below the bound.
+    retrieved = [_amt(1200), _amt(30), _amt(50), _amt(2000)]
+    r = {s["name"]: s["value"] for s in evaluate_relevance(retrieved, {"amount_min": 1000})}
+    assert r["amount_min_honored"] == 0.5
+
+
+def test_relevance_amount_range():
+    retrieved = [_amt(45), _amt(55), _amt(200)]
+    r = {s["name"]: s["value"] for s in evaluate_relevance(retrieved, {"amount_min": 40, "amount_max": 60})}
+    assert r["amount_min_honored"] == 1.0
+    assert r["amount_max_honored"] == 2 / 3
+
+
+def test_relevance_min_risk_counts_null_as_violation():
+    retrieved = [_amt(10, 0.9), _amt(10, None), _amt(10, 0.7)]
+    r = {s["name"]: s["value"] for s in evaluate_relevance(retrieved, {"min_risk": 0.8})}
+    # 0.9 passes, None fails, 0.7 fails -> 1/3
+    assert abs(r["min_risk_honored"] - 1 / 3) < 1e-9
+
+
+def test_relevance_ordered_by_risk_full_when_descending():
+    retrieved = [_amt(10, 0.9), _amt(10, 0.6), _amt(10, 0.2)]
+    r = {s["name"]: s["value"] for s in evaluate_relevance(retrieved, {"order_by": "risk"})}
+    assert r["ordered_by_risk"] == 1.0
+
+
+def test_relevance_ordered_by_risk_partial_when_unsorted():
+    # Recency ordering (the before-upgrade default) is not risk-sorted.
+    retrieved = [_amt(10, 0.2), _amt(10, 0.9), _amt(10, 0.6)]
+    r = {s["name"]: s["value"] for s in evaluate_relevance(retrieved, {"order_by": "risk"})}
+    assert r["ordered_by_risk"] == 0.5  # one of two adjacent pairs in order
+
+
+def test_relevance_empty_without_constraints():
+    assert evaluate_relevance([_amt(10)], {}) == []
+    assert evaluate_relevance([_amt(10)], None) == []
