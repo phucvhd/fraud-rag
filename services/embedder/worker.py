@@ -3,7 +3,7 @@ import threading
 import time
 
 from schemas.transaction import TransactionEmbedding
-from services.agent.sentence_transformer import SentenceTransformerModel
+from services.embedder.feature_vectorizer import FeatureVectorizer
 from services.embedder.processor import EmbeddingProcessor
 from services.repository.embedding_repository import TransactionEmbeddingRepository
 from services.repository.status_repository import TransactionStatusRepository
@@ -14,11 +14,11 @@ logger = logging.getLogger("EmbeddingWorker")
 
 
 class EmbeddingWorker:
-    def __init__(self, sentence_transformer_model: SentenceTransformerModel):
+    def __init__(self, feature_vectorizer: FeatureVectorizer):
         self.cfg = config_loader.load()
         self.repo = TransactionEmbeddingRepository()
         self.status_repo = TransactionStatusRepository()
-        self.processor = EmbeddingProcessor(sentence_transformer_model)
+        self.processor = EmbeddingProcessor(feature_vectorizer)
 
     def start(self, stop_event: threading.Event | None = None):
         logger.info("Embedding worker started")
@@ -38,7 +38,7 @@ class EmbeddingWorker:
                         transaction_id=job["transaction_id"],
                         embedding=vector,
                         embedding_text=txt,
-                        embedding_model=self.cfg.embedding.model_name,
+                        embedding_model=self.processor.model_descriptor,
                     )
                     for job, (vector, txt) in zip(jobs, embeddings)
                 ]
@@ -52,5 +52,5 @@ class EmbeddingWorker:
 
 if __name__ == "__main__":
     configure_logging()
-    worker = EmbeddingWorker(SentenceTransformerModel())
+    worker = EmbeddingWorker(FeatureVectorizer())
     worker.start()

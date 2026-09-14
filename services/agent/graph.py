@@ -57,7 +57,9 @@ Choose the tool by what the user is really asking for:
    scored as risky, whether or not confirmed — this catches fraud BEFORE the label arrives).
  - "confirmed fraud", "known fraud cases", "already charged back" -> find_known_fraud
    (only transactions confirmed as fraudulent in the database).
- - a generic search by amount or free-text description -> context_lookup.
+ - transactions SIMILAR to a specific one ("others like <id>", "similar to this transaction")
+   -> context_lookup with similar_to=<that transaction_id>. It also serves a plain amount/time
+   listing when no reference transaction is given (omit similar_to then).
 For the lookup tools (not fraud_stats/get_transaction) you MUST pass `top_k={top_k}` explicitly.
 Translate the user's constraints into the tool's parameters rather than filtering afterwards:
  - an amount bound ("over 1000 EUR", "under 50") -> amount_min / amount_max

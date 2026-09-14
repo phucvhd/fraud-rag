@@ -37,7 +37,9 @@ class EmbeddingModel(Base):
     transaction_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("transactions.transaction_id", ondelete="CASCADE"), primary_key=True
     )
-    embedding: Mapped[list] = mapped_column(Vector(384))
+    # 29 dims = [V1..V28, Amount], the standardized feature vector (see
+    # services/embedder/feature_vectorizer.FEATURE_ORDER). Not a text embedding.
+    embedding: Mapped[list] = mapped_column(Vector(29))
     embedding_text: Mapped[str] = mapped_column(TEXT)
     embedding_model: Mapped[str] = mapped_column(VARCHAR(100))
     created_at: Mapped[datetime.datetime] = mapped_column(TIMESTAMP, server_default=func.now())

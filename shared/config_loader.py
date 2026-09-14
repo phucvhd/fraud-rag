@@ -26,6 +26,9 @@ class KafkaConfig(BaseModel):
 class EmbeddingConfig(BaseModel):
     model_name: str
     dimension: int
+    # Persisted StandardScaler artifact (mean/scale over the 29-dim
+    # [V1..V28, Amount] vector). Fit once with scripts/fit_feature_scaler.py.
+    scaler_path: str = "artifacts/feature_scaler.json"
 
 
 class LLMConfig(BaseModel):
