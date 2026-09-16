@@ -2,7 +2,6 @@ import logging
 
 from mcp.server.fastmcp import FastMCP
 
-from services.agent.sentence_transformer import SentenceTransformerModel
 from services.tool.rag_tool import RAGQueryEngine
 from shared.config_loader import config_loader
 from shared.logging_config import configure_logging
@@ -11,37 +10,38 @@ logger = logging.getLogger(__name__)
 mcp = FastMCP("Repository", port=8003)
 
 cfg = config_loader.load()
-sentence_transformer_model = SentenceTransformerModel()
-rag_engine = RAGQueryEngine(sentence_transformer_model)
+rag_engine = RAGQueryEngine()
 
 
 @mcp.tool()
 def context_lookup(
     top_k: int,
-    query: str | None = None,
+    similar_to: str | None = None,
     amount_min: float | None = None,
     amount_max: float | None = None,
     since_hours: float | None = None,
     since_days: float | None = None,
 ) -> str:
-    """Search transactions by natural-language similarity, optionally narrowed to
-    an amount range and/or a recent time window. Returns a JSON list of transactions
-    with their amount, time, is_fraud label, fraud_probability (0-1, may be null),
-    top_shap_features (may be null) and raw features.
-    Pass `query` for a descriptive/semantic search (e.g. 'similar to card-testing').
-    Pass amount_min / amount_max to restrict to an amount range. When the request
-    is a PURE amount filter with no descriptive term ('transactions around 50 EUR'
-    -> amount_min=40, amount_max=60), you may OMIT `query` entirely — do not invent
-    one. 'over 1000 EUR' -> amount_min=1000, no query.
+    """Find transactions SIMILAR to a specific transaction — nearest neighbours in
+    the standardized feature space — optionally narrowed to an amount range and/or
+    a recent time window. Returns a JSON list of transactions with their amount,
+    time, is_fraud label, fraud_probability (0-1, may be null), top_shap_features
+    (may be null), raw features and a `distance`/`similarity` to the reference.
+    Pass `similar_to` = the transaction_id (a UUID) to compare against, e.g.
+    'transactions like <id>', 'others similar to this one'. Combine with
+    amount_min / amount_max / since_* to constrain the neighbours.
+    When the request is a PURE amount/time filter with no reference transaction
+    ('transactions around 50 EUR' -> amount_min=40, amount_max=60; 'over 1000 EUR'
+    -> amount_min=1000), OMIT `similar_to` — do NOT invent one.
     Pass since_hours / since_days for a recent window ('in the last hour' ->
     since_hours=1; 'today' -> since_days=1; 'this week' -> since_days=7).
     Do NOT use this for anomaly/fraud/suspicious-transaction questions — use
-    find_known_fraud instead, since this tool does not filter by the real fraud label.
+    find_known_fraud / find_suspected_fraud, which filter by the real fraud signal.
     Always specify 'top_k' to define how many results to return."""
     try:
         logger.info("Start retrieving context")
         context = rag_engine.context_lookup(
-            query, top_k, amount_min=amount_min, amount_max=amount_max,
+            similar_to, top_k, amount_min=amount_min, amount_max=amount_max,
             since_hours=since_hours, since_days=since_days,
         )
         logger.info("Retrieved context successfully")

@@ -1,7 +1,7 @@
 import logging
 
 from schemas.transaction import TransactionEmbedding
-from services.agent.sentence_transformer import SentenceTransformerModel
+from services.embedder.feature_vectorizer import FeatureVectorizer
 from services.embedder.processor import EmbeddingProcessor
 from services.repository.embedding_repository import TransactionEmbeddingRepository
 from shared.config_loader import config_loader
@@ -13,7 +13,7 @@ logger = logging.getLogger("BackfillEmbeddings")
 def run():
     cfg = config_loader.load()
     repo = TransactionEmbeddingRepository()
-    processor = EmbeddingProcessor(SentenceTransformerModel())
+    processor = EmbeddingProcessor(FeatureVectorizer())
 
     offset = 0
     total = 0
@@ -23,12 +23,12 @@ def run():
             break
 
         for row in rows:
-            vector, text = processor.create_embedding(row["amount"], row["features"], row["is_fraud"])
+            vector, text = processor.create_embedding(row["amount"], row["features"])
             repo.upsert(TransactionEmbedding(
                 transaction_id=row["transaction_id"],
                 embedding=vector,
                 embedding_text=text,
-                embedding_model=cfg.embedding.model_name,
+                embedding_model=processor.model_descriptor,
             ))
             total += 1
 

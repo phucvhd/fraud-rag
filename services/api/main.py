@@ -20,8 +20,8 @@ from schemas.dto import (
 )
 from services.agent.agent import LLMAgent
 from services.agent.graph import FraudInspectorGraph
-from services.agent.sentence_transformer import SentenceTransformerModel
 from services.consumer.consumer import FraudTransactionConsumer
+from services.embedder.feature_vectorizer import FeatureVectorizer
 from services.embedder.worker import EmbeddingWorker
 from services.health.health_checker import HealthChecker
 from services.repository.status_repository import TransactionStatusRepository
@@ -35,9 +35,8 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    sentence_transformer_model = SentenceTransformerModel()
     consumer = FraudTransactionConsumer()
-    embedder = EmbeddingWorker(sentence_transformer_model)
+    embedder = EmbeddingWorker(FeatureVectorizer())
     agent = LLMAgent()
 
     app.state.inspector = FraudInspectorGraph(agent)

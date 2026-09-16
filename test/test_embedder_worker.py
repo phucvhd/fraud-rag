@@ -27,7 +27,6 @@ def test_embedding_worker_init(mock_config_loader, mock_repo, mock_status_repo, 
 def test_embedding_worker_processes_and_saves(mock_config_loader, mock_repo, mock_status_repo, mock_processor):
     cfg = MagicMock()
     cfg.database.batch_size = 10
-    cfg.embedding.model_name = "test-model"
     mock_config_loader.load.return_value = cfg
 
     job = {
@@ -39,6 +38,7 @@ def test_embedding_worker_processes_and_saves(mock_config_loader, mock_repo, moc
     repo = mock_repo.return_value
     repo.fetch_pending.return_value = [job]
     mock_processor.return_value.create_embeddings.return_value = [([0.1, 0.2], "embedding text")]
+    mock_processor.return_value.model_descriptor = "standardscaler-vX"
 
     status_repo = mock_status_repo.return_value
     stop_event = threading.Event()
@@ -55,7 +55,7 @@ def test_embedding_worker_processes_and_saves(mock_config_loader, mock_repo, moc
     assert str(saved[0].transaction_id) == job["transaction_id"]
     assert saved[0].embedding == [0.1, 0.2]
     assert saved[0].embedding_text == "embedding text"
-    assert saved[0].embedding_model == "test-model"
+    assert saved[0].embedding_model == "standardscaler-vX"
 
     status_repo.mark_embedding.assert_called_once_with([job["transaction_id"]])
     status_repo.mark_embedded.assert_called_once_with([job["transaction_id"]])

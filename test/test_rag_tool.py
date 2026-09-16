@@ -14,7 +14,7 @@ def _build_engine(mock_get_engine, mock_config_loader, records):
     mock_conn = MagicMock()
     mock_engine.connect.return_value.__enter__.return_value = mock_conn
     mock_conn.execute.return_value.mappings.return_value.all.return_value = records
-    return RAGQueryEngine(MagicMock()), mock_conn
+    return RAGQueryEngine(), mock_conn
 
 
 @patch("services.tool.rag_tool.get_engine")
@@ -205,25 +205,40 @@ def test_fraud_lookup_returns_serialized_json(mock_config_loader, mock_get_engin
 
 @patch("services.tool.rag_tool.get_engine")
 @patch("services.tool.rag_tool.config_loader")
-def test_context_lookup_reports_cosine_similarity(mock_config_loader, mock_get_engine):
+def test_context_lookup_by_example_reports_l2_distance_and_similarity(mock_config_loader, mock_get_engine):
     records = [{
-        "transaction_id": "7bc254fe-8d4b-433f-bfac-bc265b130eaa",
+        "transaction_id": "aaaa0000-8d4b-433f-bfac-bc265b130eaa",
         "amount": Decimal("218.09"),
         "event_timestamp": "2026-03-27 15:30:26",
         "is_fraud": False,
         "fraud_probability": Decimal("0.10000"),
         "top_shap_features": None,
         "features": {"V1": 4.4045},
-        "cosine_distance": 0.25,
+        "distance": 0.5,
     }]
     engine, mock_conn = _build_engine(mock_get_engine, mock_config_loader, records)
-    engine.embedder.encode.return_value.tolist.return_value = [0.1, 0.2]
+    # The reference transaction's stored feature vector.
+    mock_conn.execute.return_value.scalar.return_value = [0.0] * 29
 
-    payload = json.loads(engine.context_lookup("anomalies", 3))
+    payload = json.loads(engine.context_lookup("7bc254fe-8d4b-433f-bfac-bc265b130eaa", 3))
 
-    assert payload[0]["similarity"] == pytest.approx(0.75)
-    # Ranking must stay on l2 distance; cosine is selected for observability only.
-    assert "<->" in str(mock_conn.execute.call_args[0][0])
+    # similarity is the monotone score 1/(1+distance) of the raw L2 distance.
+    assert payload[0]["distance"] == pytest.approx(0.5)
+    assert payload[0]["similarity"] == pytest.approx(1.0 / 1.5)
+    sql = str(mock_conn.execute.call_args[0][0])
+    # Ranked by L2 distance in feature space, and never returns the reference itself.
+    assert "<->" in sql
+    assert "transactions.transaction_id !=" in sql
+
+
+@patch("services.tool.rag_tool.get_engine")
+@patch("services.tool.rag_tool.config_loader")
+def test_context_lookup_by_example_missing_reference_returns_no_data(mock_config_loader, mock_get_engine):
+    engine, mock_conn = _build_engine(mock_get_engine, mock_config_loader, [])
+    # The reference transaction has no embedding yet.
+    mock_conn.execute.return_value.scalar.return_value = None
+
+    assert engine.context_lookup("7bc254fe-8d4b-433f-bfac-bc265b130eaa", 3) == "No data found."
 
 
 @patch("services.tool.rag_tool.get_engine")
@@ -249,16 +264,7 @@ def test_fraud_lookup_serializes_null_probability(mock_config_loader, mock_get_e
 
 @patch("services.tool.rag_tool.get_engine")
 @patch("services.tool.rag_tool.config_loader")
-def test_context_lookup_no_data(mock_config_loader, mock_get_engine):
-    engine, _ = _build_engine(mock_get_engine, mock_config_loader, [])
-    engine.embedder.encode.return_value.tolist.return_value = [0.1, 0.2]
-
-    assert engine.context_lookup("anomalies", 3) == "No data found."
-
-
-@patch("services.tool.rag_tool.get_engine")
-@patch("services.tool.rag_tool.config_loader")
-def test_context_lookup_without_query_is_a_pure_amount_filter(mock_config_loader, mock_get_engine):
+def test_context_lookup_without_reference_is_a_pure_amount_filter(mock_config_loader, mock_get_engine):
     records = [{
         "transaction_id": "7bc254fe-8d4b-433f-bfac-bc265b130eaa",
         "amount": Decimal("52.00"),
@@ -272,9 +278,10 @@ def test_context_lookup_without_query_is_a_pure_amount_filter(mock_config_loader
 
     payload = json.loads(engine.context_lookup(top_k=3, amount_min=40, amount_max=60))
 
-    # No descriptive term -> no embedding call, no vector search.
-    engine.embedder.encode.assert_not_called()
+    # No reference transaction -> no vector search, never reads a reference vector.
+    mock_conn.execute.return_value.scalar.assert_not_called()
     sql = str(mock_conn.execute.call_args[0][0])
     assert "transactions.amount >=" in sql and "transactions.amount <=" in sql
     assert "ORDER BY transactions.event_timestamp DESC" in sql
     assert payload[0]["similarity"] is None
+    assert payload[0]["distance"] is None

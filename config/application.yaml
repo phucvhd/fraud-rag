@@ -8,8 +8,11 @@ kafka:
   group_id: "fraud-rag-group"
 
 embedding:
+  # Transactions are embedded as the standardized [V1..V28, Amount] feature
+  # vector, not via a text model. model_name is kept for provenance only.
   model_name: "all-MiniLM-L6-v2"
-  dimension: 384
+  dimension: 29
+  scaler_path: "artifacts/feature_scaler.json"
 
 llm:
   provider: "ollama"

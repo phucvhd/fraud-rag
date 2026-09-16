@@ -31,3 +31,5 @@ venv/
 model_cache
 
 .claude/
+# Data-derived scaler artifacts (fit per environment)
+artifacts/
