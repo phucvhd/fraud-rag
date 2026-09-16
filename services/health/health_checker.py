@@ -29,7 +29,6 @@ class HealthChecker:
                 self._check_kafka(),
                 self._check_fraud_detection(),
                 self._check_tcp("mcp_repository", "MCP Repository", self.cfg.mcp_servers.repository.url),
-                self._check_tcp("mcp_analysis", "MCP Analysis", self.cfg.mcp_servers.analysis.url),
                 self._check_llm(),
             )
         )

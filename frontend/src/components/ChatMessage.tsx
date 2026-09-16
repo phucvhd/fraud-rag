@@ -44,6 +44,9 @@ export default function ChatMessage({ entry }: { entry: ChatEntry }) {
         <span className="eyebrow">
           {entry.topK ? `${entry.topK} similar cases · ` : ""}
           {formatTime(entry.timestamp)}
+          {/* Short prefix is enough to find the trace and keeps the header
+              readable; the full id is in the trace panel below. */}
+          {entry.traceId ? ` · trace ${entry.traceId.slice(0, 8)}` : ""}
         </span>
         <button type="button" className="finding__copy" onClick={copyAnswer}>
           {copied ? "Copied" : "Copy"}

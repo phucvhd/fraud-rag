@@ -47,13 +47,20 @@ class MCPServerConfig(BaseModel):
 
 
 class MCPServersConfig(BaseModel):
-    analysis: MCPServerConfig
     repository: MCPServerConfig
 
 
-class CorrelationAnalysisConfig(BaseModel):
-    features: dict[str, float]
-    thresholds: dict[str, float]
+class MonitoringConfig(BaseModel):
+    """LLM tracing. Defaults are set here so config files keep loading without
+    a `monitoring:` block.
+    """
+
+    # Identifies this service in traces: sets both the Langfuse trace name and
+    # the OTel `service.name` resource attribute (otherwise "unknown_service").
+    service_name: str = "ms-fraud-rag"
+    # Redact amounts and raw features before traces leave the process. Only
+    # turn off where the Langfuse instance is as trusted as the database.
+    mask_sensitive_data: bool = True
 
 
 class ApplicationConfig(BaseModel):
@@ -62,8 +69,8 @@ class ApplicationConfig(BaseModel):
     embedding: EmbeddingConfig
     llm: LLMConfig
     dashboard: DashboardConfig
-    correlation_analysis: CorrelationAnalysisConfig
     mcp_servers: MCPServersConfig
+    monitoring: MonitoringConfig = MonitoringConfig()
 
 
 class ConfigLoader:

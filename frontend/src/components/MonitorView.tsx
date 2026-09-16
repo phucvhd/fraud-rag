@@ -249,7 +249,7 @@ export default function MonitorView() {
           </label>
           <button
             type="submit"
-            className="btn btn--primary"
+            className="btn btn--accent"
             disabled={injecting || !injectConfigured()}
             title={!injectConfigured() ? "No producer configured (VITE_INJECT_URL is unset)." : undefined}
           >

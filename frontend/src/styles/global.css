@@ -13,7 +13,7 @@ body {
 }
 
 body {
-  background: var(--bg);
+  background-color: var(--bg);
   color: var(--ink);
   font-family: var(--font-ui);
   font-size: var(--text-base);
@@ -43,12 +43,15 @@ button {
   outline-offset: 2px;
 }
 
-/* Small dim label, used above a value or beside a control. */
+/* Small mono label, used above a value or beside a control.
+   Uppercase monospace with wide tracking — the signature Langfuse micro-label. */
 .eyebrow {
-  font-family: var(--font-ui);
-  font-size: var(--text-xs);
+  font-family: var(--font-data);
+  font-size: var(--text-2xs);
   font-weight: 500;
-  color: var(--ink-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--ink-faint);
   line-height: 1.4;
 }
 
@@ -78,7 +81,17 @@ button {
 }
 
 .btn--primary:not(:disabled):hover {
-  background: #1a2e4a;
+  background: #000;
+}
+
+/* Acid-lime CTA — the Langfuse accent button, dark text on lime. */
+.btn--accent {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.btn--accent:not(:disabled):hover {
+  background: #c8dd0a;
 }
 
 .btn--ghost {

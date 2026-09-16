@@ -14,8 +14,8 @@
 .agent-view__title {
   margin: 0;
   font-size: var(--text-lg);
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  font-weight: 500;
+  letter-spacing: -0.02em;
 }
 
 .agent-view__subtitle {

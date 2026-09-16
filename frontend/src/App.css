@@ -93,12 +93,30 @@
   color: var(--ink-dim);
 }
 
+.rail__status {
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  font-family: var(--font-data);
+  font-size: var(--text-2xs);
+}
+
 .rail__status-dot {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--normal);
-  box-shadow: 0 0 0 3px var(--normal-soft);
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+  animation: rail-live-pulse 2s ease-in-out infinite;
+}
+
+@keyframes rail-live-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  50% {
+    box-shadow: 0 0 0 5px var(--accent-soft);
+  }
 }
 
 .shell__main {
@@ -121,8 +139,8 @@
 .topbar__title {
   margin: 0;
   font-size: var(--text-lg);
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  font-weight: 500;
+  letter-spacing: -0.02em;
 }
 
 .topbar__clock {

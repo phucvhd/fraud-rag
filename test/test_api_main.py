@@ -2,6 +2,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 from fastapi.testclient import TestClient
 
+from services.agent.graph import InvestigationResult
 from services.api.main import app
 
 
@@ -15,7 +16,9 @@ def _client_with_inspector(inspector_run=None):
     """
     mock_inspector = MagicMock()
     if inspector_run is None:
-        mock_inspector.run = AsyncMock(return_value="Test answer")
+        mock_inspector.run = AsyncMock(
+            return_value=InvestigationResult(answer="Test answer", trace_id="abc123")
+        )
     else:
         mock_inspector.run = AsyncMock(side_effect=inspector_run)
 
@@ -38,7 +41,21 @@ def test_ask_endpoint_success():
     client, _ = _client_with_inspector()
     response = client.post("/ask", json={"prompt": "test query", "top_k": 3})
     assert response.status_code == 200
-    assert response.json() == {"answer": "Test answer"}
+    # trace_id is returned so a user reporting a bad answer can be matched to
+    # the trace that produced it.
+    assert response.json() == {"answer": "Test answer", "trace_id": "abc123"}
+
+
+def test_ask_endpoint_passes_session_and_user_through():
+    client, mock_inspector = _client_with_inspector()
+    response = client.post(
+        "/ask",
+        json={"prompt": "test query", "session_id": "sess-1", "user_id": "analyst-7"},
+    )
+    assert response.status_code == 200
+    query = mock_inspector.run.await_args[0][0]
+    assert query.session_id == "sess-1"
+    assert query.user_id == "analyst-7"
 
 
 def test_ask_endpoint_exception():
